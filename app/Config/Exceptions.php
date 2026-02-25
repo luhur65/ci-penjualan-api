@@ -103,4 +103,31 @@ class Exceptions extends BaseConfig
     {
         return new ExceptionHandler($this);
     }
+
+    // public function handler(int $statusCode, Throwable $exception): void
+    // {
+    //     $handler = new \App\Libraries\MyExceptionHandler();
+    //     $handler->handle($exception, $statusCode);
+    // }
+
+    // public function handler(int $statusCode, Throwable $exception): void
+    // {
+    //     $request = service('request');
+
+    //     if ($request->isAJAX() || str_contains($request->getPath(), 'api/')) {
+    //         $response = service('response');
+    //         $response->setStatusCode($statusCode);
+    //         $response->setJSON([
+    //             'status'  => false,
+    //             'message' => $exception->getMessage() ?: 'Terjadi kesalahan',
+    //             'code'    => $statusCode,
+    //         ]);
+    //         $response->send();
+    //         exit;
+    //     }
+
+    //     parent::handler($statusCode, $exception);
+    // }
+
+
 }

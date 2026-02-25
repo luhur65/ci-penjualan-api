@@ -11,7 +11,7 @@ class User extends CustomModel
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
-    protected $useSoftDeletes   = true;
+    protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
         'fullname',
@@ -35,11 +35,15 @@ class User extends CustomModel
 
     // Validation
     protected $validationRules      = [
+        'id'       => 'permit_empty|is_natural_no_zero',
         'fullname' => 'required|max_length[254]|min_length[3]|alpha_space',
-        'email' => 'required|max_length[254]|valid_email|is_unique[users.email]',
-        'username' => 'required|max_length[30]|alpha_numeric_space|min_length[3]|is_unique[users.username]',
+        'email'    => 'required|max_length[254]|valid_email|is_unique[users.email,id,{id}]',
+        'username' => 'required|max_length[30]|alpha_numeric_space|min_length[3]|is_unique[users.username,id,{id}]',
     ];
     protected $validationMessages   = [
+        'id' => [
+            'is_natural_no_zero' => 'ID must be a positive integer',
+        ],
         'fullname' => [
             'required' => 'Fullname is required',
             'alpha_space' => 'Fullname only contains alphabet and space'
@@ -71,18 +75,47 @@ class User extends CustomModel
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
 
-    public function role()
-    {
-        return $this->hasMany(UserRole::class, 'role_id', 'id');
+    // function untuk menentukan method mana yang tidak perlu auth
+    protected $exceptAuth = [
+        'class'  => [],
+        'method' => []
+    ];
+
+    // Model
+    protected $userRoleModel;
+    protected $roleModel;
+    protected $menuModel;
+
+    public function __construct()
+    { 
+        parent::__construct();
+        $this->userRoleModel = new UserRole();
+        $this->roleModel = new Role();
+        $this->menuModel = new Menu();
     }
 
-    public function get()
+    public function withRole($username)
+    {
+        return $this->select('users.*, roles.rolename as role, roles.id as roleid')
+            ->join('userroles', 'userroles.user_id = users.id', 'left')
+            ->join('roles', 'roles.id = userroles.role_id', 'left')
+            ->where('users.username', $username)
+            ->first();
+    }
+
+    public function getAll()
     {
         $this->setRequestParameters();
 
-        // Base query
-        $builder = $this->builder();
-        $builder->select([
+        // ===== QUERY COUNT (CLONE BUILDER) =====
+        // $countBuilder = $this->builder();
+        // $countBuilder->select('id');
+
+        // $this->filter($countBuilder);
+        
+        // ===== QUERY DATA =====
+        $query = $this->builder();
+        $query->select([
             'id',
             'fullname',
             'email',
@@ -91,19 +124,21 @@ class User extends CustomModel
             'updated_at'
         ]);
 
-        $this->filter($builder);
-        $this->sort($builder);
-        $this->pagination($builder);
+        // $query->where('deleted_at', NULL);
 
-        $data = $builder->get()->getResult();
+        $this->filter($query);
+        $this->sort($query);
+        $this->pagination($query);
 
-        $this->totalRows = $builder->countAllResults(false);
-        $this->totalPages = ($this->totalRows > 0) ? ceil($this->totalRows / $this->params['limit']) : 1;
+        $this->totalRows = $query->countAllResults(false);
+        $this->totalPages = ceil($this->totalRows / $this->params['limit']);
 
-        return $data;
+        // return $query->get()->getResult();
+        return $query->get()->getResult();
     }
 
-    public function find1($id = null)
+
+    public function findOne($id = null)
     {
         // Ambil data user
         $user = $this->db->table('users u')
@@ -199,20 +234,218 @@ class User extends CustomModel
             }
         }
 
-        $this->totalRows = $query->countAllResults(false);
-        $limit = $this->params['limit'] ?? 10;
-        $this->totalPages = ceil($this->totalRows / $limit);
+        // $this->totalRows = $query->countAllResults(false);
+        // $limit = $this->params['limit'] ?? 10;
+        // $this->totalPages = ceil($this->totalRows / $limit);
 
         return $query;
     }
 
     public function proccesStore($data)
     {
-        // Inserts data and returns inserted row's primary key
-        // $this->insert($data);
-        // Inserts data and returns true on success and false on failure
-        return $this->insert($data, false);
+        if(!$this->insert($data)) {
+            throw new \Exception("Error inserting user.");
+        }
+
+        return true;
     }
 
+    public function proccesUpdate($data)
+    {
+        $roleIds = $data['role_ids'] ?? [];
+        unset($data['role_ids']);
 
+        // Update user utama
+        if(!$this->update($data['id'], $data)) {
+            throw new \Exception("Error updating user.");
+        }
+
+        // Hapus role lama
+        $this->userRoleModel
+            ->where('user_id', $data['id'])
+            ->delete();
+
+        // Insert role baru
+        foreach ($roleIds as $roleId) {
+            $this->userRoleModel->insert([
+                'user_id' => $data['id'],
+                'role_id' => $roleId,
+            ]);
+        }
+
+        return true;
+    }
+
+    public function proccesDelete($id)
+    {
+        if(!$this->delete($id)) {
+            throw new \Exception("Error deleting user.");
+        }
+
+        $this->userRoleModel
+            ->where('user_id', $id)
+            ->delete();
+
+        return true;
+    }
+
+    public function printRecursiveMenu(array $menus, bool $hasParent = false, $currentMenu = null)
+    {
+        $string = $hasParent ? '<ul class="ml-4 nav nav-treeview">' : '';
+        $url = env('frontend.baseURL'); // Menggunakan fungsi bawaan CI4
+
+        foreach ($menus as $menu) {
+            if ((count($menu['child']) > 0 || $menu['link'] != '' || $menu['aco_id'] != 0) && $this->hasClickableChild($menu)) {
+                if ($menu['menuname'] == "DASHBOARD") {
+                    $menu['class'] = "dashboard";
+                }
+
+                // Menyusun string URL
+                $linkHref = count($menu['child']) > 0
+                    ? 'javascript:void(0)'
+                    : ($menu['link'] != '' ? strtolower($url . $menu['link']) : strtolower($url . $menu['menuexe']));
+
+                // Validasi menu aktif
+                $isActive = (isset($currentMenu->id) && $currentMenu->id == $menu['menuid']) ? 'active hover' : '';
+                $icon = strtolower($menu['menu_icon']) ?? 'far fa-circle';
+                $linkId = count($menu['child']) > 0 ? '' : 'link-' . $menu['class'];
+                $childIcon = count($menu['child']) > 0 ? '<i class="right fas fa-angle-left"></i>' : '';
+                $childMenu = count($menu['child']) > 0 ? $this->printRecursiveMenu($menu['child'], true, $currentMenu) : '';
+
+                $string .= '
+                <li class="nav-item">
+                  <a id="' . $linkId . '" href="' . $linkHref . '" class="nav-link ' . $isActive . '">
+                    <i class="nav-icon ' . $icon . '"></i>
+                    <p>
+                      ' . $menu['menuname'] . '
+                      ' . $childIcon . '
+                    </p>
+                  </a>
+                  ' . $childMenu . '
+                </li>
+              ';
+            }
+        }
+
+        $string .= $hasParent ? '</ul>' : '';
+        return $string;
+    }
+
+    public function getMenu($userid, $induk = 0)
+    {
+        $data = [];
+
+        // Query Builder CI4
+        $menu = $this->db->table('menus')
+            ->select('menus.id, menus.aco_id, menus.menu_seq, menus.menuname, menus.menu_icon, acos.class, acos.method, menus.link, menus.menukode, menus.menu_parent')
+            ->join('acos', 'menus.aco_id = acos.id', 'left')
+            ->where('menus.menu_parent', $induk)
+            // ->orderBy('right(menus.menukode,1)', 'ASC', false)
+            ->get()
+            ->getResult();
+
+        foreach ($menu as $row) {
+            $childMenu = $this->getMenu($userid, $row->id);
+
+            $hasPermission = $this->hasPermission($row->class, $row->method, $userid);
+
+            if ($hasPermission || $row->class == null) {
+                $data[] = [
+                    'menuid'     => $row->id,
+                    'aco_id'     => $row->aco_id,
+                    'menuname'   => $row->menuname,
+                    'menu_icon'   => $row->menu_icon,
+                    'link'       => $row->link,
+                    'menuno'     => substr($row->menukode, -1),
+                    'menukode'   => $row->menukode,
+                    // 'menuexe'    => $row->class . "/" . $row->method,
+                    'menuexe'    => $row->class,
+                    'class'      => $row->class,
+                    'child'      => $childMenu,
+                    'menu_parent' => $row->menu_parent,
+                ];
+            }
+        }
+
+        return $data;
+    }
+
+    public function hasPermission($class, $method, $userid)
+    {
+        $class = strtolower($class);
+        $method = strtolower($method);
+
+        return $this->_validatePermission($class, $method, $userid);
+    }
+
+    private function _validatePermission($class = null, $method = null, $userid)
+    {
+        if (in_array(strtolower($class), $this->exceptAuth['class'])) {
+            return true;
+        }
+
+        // Builder untuk union
+        $builderUnion = $this->db->table('acos')
+            ->select('acos.id, acos.class, acos.method')
+            ->join('acl', 'acos.id = acl.aco_id')
+            ->join('userroles', 'acl.role_id = userroles.role_id')
+            ->where('acos.class', $class)
+            // Parameter ketiga 'false' mencegah CI4 menambahkan escape quotes otomatis pada raw SQL
+            // ->where("isnull(acos.statusemkl,'')=''", null, false)
+            ->where('userroles.user_id', $userid);
+
+        // Builder utama
+        $builder = $this->db->table('acos')
+            ->select('acos.id, acos.class, acos.method')
+            ->join('useracl', 'acos.id = useracl.aco_id')
+            ->where('acos.class', $class)
+            ->where('useracl.user_id', $userid)
+            ->unionAll($builderUnion);
+
+        $data = $builder->get()->getResult();
+
+        if ($this->in_array_custom($method, $data) == false && in_array($method, $this->exceptAuth['method']) == false) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function in_array_custom($item, $array): bool
+    {
+        $found = array_search(
+            $item,
+            array_map(function ($v) {
+                // Di CI4, getResult() mengembalikan array of objects
+                return strtolower($v->method);
+            }, $array)
+        );
+
+        return empty($found) && $found !== 0 ? false : true;
+    }
+
+    public function hasClickableChild(array $menu): bool
+    {
+        if (count($menu['child']) > 0) {
+            foreach ($menu['child'] as $menuChild) {
+                if ($this->hasClickableChild($menuChild)) {
+                    return true;
+                }
+            }
+        } else {
+            return $this->isClickableChild($menu);
+        }
+
+        return false;
+    }
+
+    public function isClickableChild(array $menu): bool
+    {
+        if ($menu['menu_parent'] == 0) {
+            return true;
+        } else {
+            return $menu['aco_id'] != 0 && $menu['menuexe'] != '/';
+            // return $menu['aco_id'] != 0;
+        }
+    }
 }

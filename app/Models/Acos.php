@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
+use App\Models\CustomModel;
 
-class Acos extends Model
+class Acos extends CustomModel
 {
     protected $table            = 'acos';
     protected $primaryKey       = 'id';
@@ -12,7 +12,13 @@ class Acos extends Model
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = [];
+    protected $allowedFields    = [
+        'class',
+        'method',
+        'nama',
+        'idheader',
+        'keterangan'
+    ];
 
     protected bool $allowEmptyInserts = false;
     protected bool $updateOnlyChanged = true;
@@ -43,4 +49,142 @@ class Acos extends Model
     protected $afterFind      = [];
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
+
+    public function get()
+    {
+        $this->setRequestParameters();
+
+        // Base query
+        $builder = $this->builder();
+        $builder->select([
+            'id',
+            'class',
+            'method',
+            'nama',
+            'idheader',
+            'keterangan'
+        ]);
+
+        $this->filter($builder);
+        $this->sort($builder);
+        $this->pagination($builder);
+
+        $data = $builder->get()->getResult();
+
+        $this->totalRows = $builder->countAllResults(false);
+        $this->totalPages = ($this->totalRows > 0) ? ceil($this->totalRows / $this->params['limit']) : 1;
+
+        return $data;
+    }
+
+    public function findOne($id = null)
+    {
+        $acos = $this->builder()
+            ->select('id, class, method, nama, idheader, keterangan')
+            ->where('id', $id)
+            ->get()
+            ->getRow();
+
+        return [
+            'data' => $acos
+        ];
+    }
+
+    public function sort($query)
+    {
+        $query->orderBy($this->params['sidx'], $this->params['sord']);
+    }
+
+    public function filter(&$query)
+    {
+        $filters = $this->params['filters'] ?? [];
+
+        if (
+            empty($filters) ||
+            empty($filters['rules']) ||
+            $filters['rules'][0]['data'] === ''
+        ) {
+            return $query;
+        }
+
+        $groupOp = strtoupper($filters['groupOp']);
+
+        foreach ($filters['rules'] as $rule) {
+
+            $field = $rule['field'];
+            $value = trim($rule['data']);
+            $isDate = in_array($field, ['created_at', 'updated_at']);
+
+            // untuk field text
+            $likeText = "%{$value}%";
+
+            // untuk field DATE_FORMAT
+            $likeDate = "'%{$value}%'";  // WAJIB STRING LITERAL
+
+            $dateExpr = "DATE_FORMAT({$this->table}.{$field}, '%d-%m-%Y %H:%i:%s')";
+
+            if ($groupOp === 'AND') {
+
+                if ($isDate) {
+                    // LIKE untuk date
+                    $query->where("$dateExpr LIKE $likeDate", null, false);
+                } else {
+                    // LIKE normal CI4
+                    $query->like("{$this->table}.{$field}", $value);
+                }
+
+            } else { // OR
+
+                if ($isDate) {
+                    $query->orWhere("$dateExpr LIKE $likeDate", null, false);
+                } else {
+                    $query->orLike("{$this->table}.{$field}", $value);
+                }
+            }
+        }
+
+        $this->totalRows = $query->countAllResults(false);
+        $limit = $this->params['limit'] ?? 10;
+        $this->totalPages = ceil($this->totalRows / $limit);
+
+        return $query;
+    }
+
+    public function pagination($query)
+    {
+        $query->limit($this->params['limit'], $this->params['offset']);
+    }
+
+    public function processStore($data)
+    {
+        if (!$this->insert($data)) {
+            throw new \Exception("Error storing ACOS.");
+        }
+
+        return true;
+    }
+
+    public function processUpdate($data)
+    {
+        if (!$this->update($data['id'], $data)) {
+            throw new \Exception("Error updating ACOS.");
+        }
+
+        return true;
+    }
+
+    public function processDelete($id)
+    {
+        if (!$this->delete($id)) {
+            throw new \Exception("Error deleting ACOS.");
+        }
+
+        return true;
+    }
+
+    public function getAcosByClass($class)
+    {
+        return $this->where('class', $class)->first();
+    }
+
 }

@@ -57,4 +57,6 @@ class CustomModel extends Model
 
         return $this->lengthCache[$this->table] = $lengths;
     }
+
+    
 }

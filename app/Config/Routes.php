@@ -2,9 +2,10 @@
 
 use CodeIgniter\Router\RouteCollection;
 use App\Controllers\Api\LoginController;
-use App\Controllers\Api\User;
-use App\Controllers\Api\Menu;
-use App\Controllers\Api\Role;
+use App\Controllers\Api\UserController;
+use App\Controllers\Api\MenuController;
+use App\Controllers\Api\RoleController;
+use App\Controllers\Api\AcosController;
 
 /**
  * @var RouteCollection $routes
@@ -26,16 +27,21 @@ $routes->group("api", function ($routes) {
 $routes->group("api", ['filter' => 'jwtFilter'], function ($routes) {
     
     // user routes
-    $routes->get('users/fieldlength', [User::class, 'fieldLength']);
-    $routes->resource("users", ['namespace' => '', 'controller' => User::class]);
+    $routes->get('users/fieldlength', [UserController::class, 'fieldLength']);
+    $routes->resource("users", ['namespace' => '', 'controller' => UserController::class]);
 
     // role routes
-    $routes->get('role/fieldlength', [Role::class, 'fieldLength']);
-    $routes->resource('role', ['namespace' => '', 'controller' => Role::class]);
-    
+    $routes->get('roles/fieldlength', [RoleController::class, 'fieldLength']);
+    $routes->resource('roles', ['namespace' => '', 'controller' => RoleController::class]);
+
+    // acoss routes
+    $routes->get('acos/fieldlength', [AcosController::class, 'fieldLength']);
+    $routes->resource('acos', ['namespace' => '', 'controller' => AcosController::class]);
+
     // menu routes
-    $routes->get('menu/fieldlength', [Menu::class, 'fieldLength']);
-    $routes->get('menu/classes', [Menu::class, 'getAllClass']);
-    $routes->resource('menu', ['namespace' => '', 'controller' => Menu::class]);
+    $routes->get('menu/fieldlength', [MenuController::class, 'fieldLength']);
+    $routes->get('menu/controllers', [MenuController::class, 'getAllClass']);
+    $routes->get('menu/parents', [MenuController::class, 'getMenuParent']);
+    $routes->resource('menu', ['namespace' => '', 'controller' => MenuController::class]);
 
 });

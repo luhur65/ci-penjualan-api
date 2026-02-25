@@ -4,18 +4,15 @@ namespace App\Models;
 
 use CodeIgniter\Model;
 
-class Acl extends Model
+class ChatModel extends Model
 {
-    protected $table            = 'acl';
+    protected $table            = 'chats';
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
-    protected $allowedFields    = [
-        'role_id',
-        'aco_id',
-    ];
+    protected $allowedFields    = [];
 
     protected bool $allowEmptyInserts = false;
     protected bool $updateOnlyChanged = true;
@@ -46,31 +43,4 @@ class Acl extends Model
     protected $afterFind      = [];
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
-
-    public function processStore($data)
-    {
-        if (!$this->insert($data)) {
-            throw new \Exception("Error storing ACL.");
-        }
-
-        return true;
-    }
-
-    public function processUpdate($data)
-    {
-        if (!$this->update($data['id'], $data)) {
-            throw new \Exception("Error updating ACL.");
-        }
-
-        return true;
-    }
-
-    public function processDelete($id)
-    {
-        if (!$this->delete($id)) {
-            throw new \Exception("Error deleting ACL.");
-        }
-
-        return true;
-    }
 }

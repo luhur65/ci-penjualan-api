@@ -16,23 +16,28 @@ class LoginController extends BaseController
     public function index()
     {
 
-        $model = new User();
-        $username = $this->request->getVar('username');
-        $password = $this->request->getVar('password');
+        $userModel = new User();
+        $username = $this->request->getPost('username');
+        $password = $this->request->getPost('password');
 
-        $user = $model->where('username', $username)->first();
+        if (!$username || !$password) {
+            return $this->failValidationErrors('Username dan password wajib diisi');
+        }
 
-        // if(!$user){
-        //     return $this->failNotFound('User tidak ditemukan');
-        // }
+        // $user = $userModel->where('username', $username)->first();
+        $user = $userModel->withRole($username);
 
-        // if(!password_verify($password, $user['password'])){
-        //     return $this->fail('password salah', 401);
-        // }
+        if(!$user){
+            return $this->failNotFound('User tidak ditemukan');
+        }
+
+        if(!password_verify($password, $user['password'])){
+            return $this->failUnauthorized('Password salah');
+        }
 
         $payload = [
             'id'   => $user['id'],
-            // 'role' => $user['role'], // Penting untuk RBAC
+            'role' => $user['role'], // Penting untuk RBAC
             'name' => $user['username'],
         ];
 
@@ -56,9 +61,15 @@ class LoginController extends BaseController
         return $this->respond([
             // 'status' => 200,
             'access_token'  => $token,
+            'user' => [
+                'id' => $user['id'],
+                'username' => $user['username'],
+                'fullname' => $user['fullname'],
+                'email' => $user['email'],
+            ],
             'refresh_token' => $refreshToken,
             'expires_in'   => $jwtLib->getExpireTime(), // sebaiknya 2 jam
-            // 'role'   => $user['role']
+            'menu'   => $user['menu']
         ]);
 
     }

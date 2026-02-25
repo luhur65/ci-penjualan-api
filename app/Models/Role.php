@@ -10,7 +10,7 @@ class Role extends CustomModel
     protected $primaryKey       = 'id';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
-    protected $useSoftDeletes   = true;
+    protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
         'rolename',
@@ -74,6 +74,19 @@ class Role extends CustomModel
         $this->totalPages = ($this->totalRows > 0) ? ceil($this->totalRows / $this->params['limit']) : 1;
 
         return $data;
+    }
+
+    public function findOne($id = null)
+    {
+        $role = $this->builder()
+            ->select('id, rolename, updated_at, created_at')
+            ->where('id', $id)
+            ->get()
+            ->getRow();
+
+        return [
+            'data' => $role
+        ];
     }
 
     public function sort($query) 
@@ -143,7 +156,76 @@ class Role extends CustomModel
 
     public function processStore($data)
     {
-        
+        if (!$this->insert($data)) {
+            throw new \Exception("Error storing role.");
+        }
+
+        return true;
+    }
+
+    public function processUpdate($data)
+    {
+        if (!$this->update($data['id'], $data)) {
+            throw new \Exception("Error updating role.");
+        }
+
+        $userModel = new User();
+        $aclModel = new Acl();
+        $aclModel->where('role_id', $data['id'])->delete();
+
+        $acos = [];
+        foreach ($data['acosIds'] as $acoId) {
+            $acos[] = [
+                'aco_id'  => $acoId,
+                'role_id' => $data['id'],
+            ];
+        }
+
+        if (!empty($acos)) {
+            $aclModel->insertBatch($acos);
+        }
+
+        // 6. Query user dengan role tersebut
+        // Menggunakan Query Builder CI4. 
+        // Catatan: Jika Anda mutlak membutuhkan isolasi 'readuncommitted' SQL Server, Anda harus menggunakan $db->query() secara mentah.
+        $queryUser = $this->db->table('userroles a')
+            ->select('a.user_id')
+            ->where('a.role_id', $data['id'])
+            ->groupBy('a.user_id')
+            ->get()
+            ->getResultArray();
+
+        // 7. Update menu user
+        foreach ($queryUser as $item) {
+            $userId = $item['user_id'];
+
+            // Asumsi getMenu dan printRecursiveMenu sudah dikonversi ke dalam UserModel CI4
+            $getMenu = $userModel->getMenu($userId);
+            $listMenu = $userModel->printRecursiveMenu($getMenu, false);
+
+            // Update langsung via Query Builder
+            $this->db->table('users')
+                ->where('id', $userId)
+                ->update([
+                    'menu' => $listMenu
+                ]);
+        }
+
+        return true;
+    }
+
+    public function processDelete($id)
+    {
+
+        $role = $this->find($id);
+
+        if (empty($role)) {
+            throw new \Exception("Role with ID {$id} not found.");
+        }
+
+        $this->delete($id);
+
+        return true;
     }
 
 }
