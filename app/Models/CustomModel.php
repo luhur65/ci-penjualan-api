@@ -20,7 +20,7 @@ class CustomModel extends Model
         $request = service('request');
 
         $page   = $request->getGetPost('page') ?? 1;
-        $limit  = $request->getGetPost('limit') ?? 10;
+        $limit  = $request->getGetPost('rows') ?? 10;
 
         $this->params = [
             'offset'     => $request->getGetPost('offset') ?? (($page ? $page - 1 : 0) * $limit),

@@ -21,13 +21,17 @@ $routes->group("api", function ($routes) {
     // $routes->post("register", "Register::index");
     $routes->post("token", [LoginController::class, 'index']);
     $routes->post("refresh-token", [LoginController::class, 'refreshToken']);
-    
+    $routes->get("permissions", [LoginController::class, 'getPermissionUser']);
+
+    $routes->post('forgot-password', [LoginController::class, 'forgotPassword']);
+    $routes->post('reset-password', [LoginController::class, 'resetPassword']);
 });
 
-$routes->group("api", ['filter' => 'jwtFilter'], function ($routes) {
+$routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($routes) {
     
     // user routes
     $routes->get('users/fieldlength', [UserController::class, 'fieldLength']);
+    $routes->get('users/export', [UserController::class, 'export']);
     $routes->resource("users", ['namespace' => '', 'controller' => UserController::class]);
 
     // role routes

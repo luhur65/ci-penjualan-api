@@ -85,17 +85,20 @@ class JwtFilter implements FilterInterface
 
         // 4. (Opsional RBAC) Cek Role dari Argumen Filter
         // $arguments didapat dari Routes: ['filter' => 'auth:admin']
-        if ($arguments) {
-            // $userData adalah object, karena hasil decode JWT defaultnya object
-            if (!in_array($userData->role, $arguments)) {
-                 return Services::response()
-                                ->setJSON(['message' => 'Akses Ditolak (Role tidak sesuai)'])
-                                ->setStatusCode(403);
-            }
-        }
+        // if ($arguments) {
+        //     // $userData adalah object, karena hasil decode JWT defaultnya object
+        //     if (!in_array($userData->role, $arguments)) {
+        //          return Services::response()
+        //                         ->setJSON(['message' => 'Akses Ditolak (Role tidak sesuai)'])
+        //                         ->setStatusCode(403);
+        //     }
+        // }
 
         // Simpan user ke global request (aman dan direkomendasikan)
-        $request->setGlobal('jwtUser', (array)$userData);
+        // $request->setGlobal('jwtUser', (array)$userData);
+        $request->setGlobal('server', array_merge($request->getServer(), [
+            'jwtUser' => (array) $userData,
+        ]));
 
         return $request;
     }

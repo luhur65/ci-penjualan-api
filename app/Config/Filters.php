@@ -12,9 +12,10 @@ use CodeIgniter\Filters\InvalidChars;
 use CodeIgniter\Filters\PageCache;
 use CodeIgniter\Filters\PerformanceMetrics;
 use CodeIgniter\Filters\SecureHeaders;
-use App\Filters\AuthFilter;
+// use App\Filters\AuthFilter;
 use App\Filters\JwtFilter;
 use App\Filters\ByPassLoginFilter;
+use App\Filters\AclFilter;
 
 class Filters extends BaseFilters
 {
@@ -39,6 +40,7 @@ class Filters extends BaseFilters
         'performance'   => PerformanceMetrics::class,
         'jwtFilter'     => JwtFilter::class,
         'testByPass'    => ByPassLoginFilter::class,
+        'aclFilter'     => AclFilter::class
     ];
 
     /**
@@ -79,11 +81,11 @@ class Filters extends BaseFilters
         'before' => [
             // 'honeypot',
             // 'csrf',
-            // 'invalidchars',
+            'invalidchars',
         ],
         'after' => [
             // 'honeypot',
-            // 'secureheaders',
+            'secureheaders',
         ],
     ];
 

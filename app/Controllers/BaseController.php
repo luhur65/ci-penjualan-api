@@ -56,8 +56,8 @@ abstract class BaseController extends Controller
 
         // E.g.: $this->session = service('session');
         // $this->request = $request;
-        $this->response = service('response');
-        $this->request = service('request');
+        // $this->response = service('response');
+        // $this->request = service('request');
         
     }
 }

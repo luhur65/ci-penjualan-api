@@ -94,13 +94,43 @@ class User extends CustomModel
         $this->menuModel = new Menu();
     }
 
-    public function withRole($username)
+    // public function withRole($username)
+    // {
+    //     return $this->select('users.*, roles.rolename as role, roles.id as roleid')
+    //         ->join('userroles', 'userroles.user_id = users.id', 'left')
+    //         ->join('roles', 'roles.id = userroles.role_id', 'left')
+    //         ->where('users.username', $username)
+    //         ->first();
+    // }
+
+    public function withRoles($username)
     {
-        return $this->select('users.*, roles.rolename as role, roles.id as roleid')
+        $rows = $this->select('users.*, roles.rolename as role, roles.id as roleid')
             ->join('userroles', 'userroles.user_id = users.id', 'left')
             ->join('roles', 'roles.id = userroles.role_id', 'left')
             ->where('users.username', $username)
-            ->first();
+            ->get()
+            ->getResultArray();
+        // dd($rows);
+
+        if (empty($rows)) return null;
+
+        // Ambil data user dari baris pertama, hapus kolom role sementara
+        $user = $rows[0];
+        unset($user['role'], $user['roleid']);
+
+        // Filter hanya baris yang punya role (bukan NULL), lalu mapping
+        $user['roles'] = array_values(
+            array_map(
+                fn($row) => [
+                    'id'       => $row['roleid'],
+                    'role' => $row['role'],
+                ],
+                array_filter($rows, fn($row) => !empty($row['roleid']))
+            )
+        );
+
+        return $user;
     }
 
     public function getAll()
@@ -276,6 +306,13 @@ class User extends CustomModel
         return true;
     }
 
+    public function updatePasswordById(int $id, string $hash): bool
+    {
+        return (bool) $this->builder()
+            ->where('id', $id)
+            ->update(['password' => $hash]);
+    }
+
     public function proccesDelete($id)
     {
         if(!$this->delete($id)) {
@@ -333,41 +370,55 @@ class User extends CustomModel
 
     public function getMenu($userid, $induk = 0)
     {
-        $data = [];
+        // 1. Ambil semua role ID milik user dalam satu array datar
+        $roleIds = $this->db->table('userroles')
+            ->where('user_id', $userid)
+            ->get()
+            ->getResultArray();
 
-        // Query Builder CI4
-        $menu = $this->db->table('menus')
-            ->select('menus.id, menus.aco_id, menus.menu_seq, menus.menuname, menus.menu_icon, acos.class, acos.method, menus.link, menus.menukode, menus.menu_parent')
-            ->join('acos', 'menus.aco_id = acos.id', 'left')
-            ->where('menus.menu_parent', $induk)
-            // ->orderBy('right(menus.menukode,1)', 'ASC', false)
+        // Jika user tidak punya role sama sekali, langsung stop
+        if (empty($roleIds)) return [];
+
+        $ids = array_column($roleIds, 'role_id');
+
+        // 2. Ambil menu yang terkait dengan kumpulan role tersebut dalam SATU query
+        $menuData = $this->db->table('menus m')
+            ->select('m.id, m.aco_id, m.menu_seq, m.menuname, m.menu_icon, a.class, a.method, m.link, m.menukode, m.menu_parent')
+            ->join('acos a', 'm.aco_id = a.id', 'left')
+            ->join('acl l', 'l.aco_id = a.id AND l.role_id IN (' . implode(',', array_map('intval', $ids)) . ')', 'left', false)
+            ->where('m.menu_parent', $induk)
+            ->groupBy('m.id')
+            ->orderBy('m.menu_seq', 'ASC')
             ->get()
             ->getResult();
 
-        foreach ($menu as $row) {
+        $menus = [];
+        foreach ($menuData as $row) {
+            // Rekursi untuk child
             $childMenu = $this->getMenu($userid, $row->id);
 
+            // Pengecekan permission
             $hasPermission = $this->hasPermission($row->class, $row->method, $userid);
 
-            if ($hasPermission || $row->class == null) {
-                $data[] = [
-                    'menuid'     => $row->id,
-                    'aco_id'     => $row->aco_id,
-                    'menuname'   => $row->menuname,
+            // Jika punya akses atau ini adalah menu folder (tanpa class/aco)
+            if ($hasPermission || $row->aco_id == 0 || $row->class == null) {
+                $menus[] = [
+                    'menuid'      => $row->id,
+                    'aco_id'      => $row->aco_id,
+                    'menuname'    => $row->menuname,
                     'menu_icon'   => $row->menu_icon,
-                    'link'       => $row->link,
-                    'menuno'     => substr($row->menukode, -1),
-                    'menukode'   => $row->menukode,
-                    // 'menuexe'    => $row->class . "/" . $row->method,
-                    'menuexe'    => $row->class,
-                    'class'      => $row->class,
-                    'child'      => $childMenu,
+                    'link'        => $row->link,
+                    'menuno'      => substr($row->menukode, -1),
+                    'menukode'    => $row->menukode,
+                    'menuexe'     => $row->class,
+                    'class'       => $row->class,
+                    'child'       => $childMenu,
                     'menu_parent' => $row->menu_parent,
                 ];
             }
         }
 
-        return $data;
+        return $menus;
     }
 
     public function hasPermission($class, $method, $userid)
@@ -390,8 +441,6 @@ class User extends CustomModel
             ->join('acl', 'acos.id = acl.aco_id')
             ->join('userroles', 'acl.role_id = userroles.role_id')
             ->where('acos.class', $class)
-            // Parameter ketiga 'false' mencegah CI4 menambahkan escape quotes otomatis pada raw SQL
-            // ->where("isnull(acos.statusemkl,'')=''", null, false)
             ->where('userroles.user_id', $userid);
 
         // Builder utama
