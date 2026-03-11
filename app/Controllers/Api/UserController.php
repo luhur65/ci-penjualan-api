@@ -155,6 +155,17 @@ class UserController extends BaseController
         }
     }
 
+    /**
+     * @ClassName 
+     * @Keterangan EXPORT DATA
+     */
+    public function export()
+    {
+        $userModel = new UserModel();
+        $users = $userModel->getAll();
+        return $this->respond($users);
+    }
+
     public function fieldLength()
     {
         $model = new UserModel();

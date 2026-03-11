@@ -148,7 +148,7 @@ class Menu extends CustomModel
 
         // Ambil daftar controller yang sudah dipakai
         // controller ada di table acos
-        $usedControllers = $this->builder() 
+        $usedControllers = $this->builder()
             ->select('acos.class as controller')
             ->join('acos', 'acos.id = menus.aco_id', 'left')
             ->where('acos.class IS NOT NULL')
@@ -325,10 +325,14 @@ class Menu extends CustomModel
         $modifiedBy = session()->get('id') ?? 0;
 
         // Cek controller
-        $acos = $acosModel->where('id', $menu['aco_id'])->first();
-
-        // Jika controller tidak diisi, ambil dari acos
-        $controller = (empty($data['controller']) ? $acos['class'] : $data['controller']);
+        // cek jika aco_id = 0, berarti itu menu master
+        if ($menu['aco_id'] != 0) {
+            $acos = $acosModel->where('id', $menu['aco_id'])->first();
+            // Jika controller tidak diisi, ambil dari acos
+            $controller = (empty($data['controller']) ? $acos['class'] : $data['controller']);
+        } else {
+            $controller = $data['controller'];
+        }
 
         if (!empty($controller)) {
             $controllerData = $inspector->scanController($controller);

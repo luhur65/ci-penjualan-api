@@ -84,8 +84,15 @@ class Role extends CustomModel
             ->get()
             ->getRow();
 
+        $acos = $this->db->table('acl')
+            ->select('aco_id')
+            ->where('role_id', $id)
+            ->get()
+            ->getResultArray();
+
         return [
-            'data' => $role
+            'data' => $role,
+            'acos' => $acos
         ];
     }
 
