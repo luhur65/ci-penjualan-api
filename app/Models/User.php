@@ -370,7 +370,7 @@ class User extends CustomModel
 
     public function getMenu($userid, $induk = 0)
     {
-        // 1. Ambil semua role ID milik user dalam satu array datar
+        // 1. Ambil semua role ID milik user
         $roleIds = $this->db->table('userroles')
             ->where('user_id', $userid)
             ->get()
@@ -381,24 +381,73 @@ class User extends CustomModel
 
         $ids = array_column($roleIds, 'role_id');
 
-        // 2. Ambil menu yang terkait dengan kumpulan role tersebut dalam SATU query
+        // 2. Ambil semua menu sekaligus tanpa memfilter menu_parent (N+1 fix)
+        // Kita juga join ke 'acl' untuk role yang dimiliki
         $menuData = $this->db->table('menus m')
             ->select('m.id, m.aco_id, m.menu_seq, m.menuname, m.menu_icon, a.class, a.method, m.link, m.menukode, m.menu_parent')
             ->join('acos a', 'm.aco_id = a.id', 'left')
             ->join('acl l', 'l.aco_id = a.id AND l.role_id IN (' . implode(',', array_map('intval', $ids)) . ')', 'left', false)
-            ->where('m.menu_parent', $induk)
             ->groupBy('m.id')
+            ->orderBy('m.menu_parent', 'ASC')
             ->orderBy('m.menu_seq', 'ASC')
             ->get()
             ->getResult();
 
-        $menus = [];
-        foreach ($menuData as $row) {
-            // Rekursi untuk child
-            $childMenu = $this->getMenu($userid, $row->id);
+        // 3. Pre-load permission methods for user to avoid calling hasPermission in loop
+        $userPermissions = [];
+        // Role permissions
+        $rolePerms = $this->db->table('acos a')
+            ->select('a.method, a.class')
+            ->join('acl l', 'a.id = l.aco_id')
+            ->whereIn('l.role_id', $ids)
+            ->get()
+            ->getResult();
+        foreach ($rolePerms as $perm) {
+            $userPermissions[strtolower($perm->class)][strtolower($perm->method)] = true;
+        }
 
-            // Pengecekan permission
-            $hasPermission = $this->hasPermission($row->class, $row->method, $userid);
+        // User permissions (useracl)
+        $userPerms = $this->db->table('acos a')
+            ->select('a.method, a.class')
+            ->join('useracl u', 'a.id = u.aco_id')
+            ->where('u.user_id', $userid)
+            ->get()
+            ->getResult();
+        foreach ($userPerms as $perm) {
+            $userPermissions[strtolower($perm->class)][strtolower($perm->method)] = true;
+        }
+
+        // 4. Kelompokkan menu berdasarkan menu_parent
+        $groupedMenus = [];
+        foreach ($menuData as $row) {
+            $groupedMenus[$row->menu_parent][] = $row;
+        }
+
+        // 5. Bangun tree menu menggunakan fungsi in-memory recursif
+        return $this->_buildMenuTree($induk, $groupedMenus, $userPermissions);
+    }
+
+    private function _buildMenuTree($parentId, array &$groupedMenus, array &$userPermissions)
+    {
+        $menus = [];
+        if (!isset($groupedMenus[$parentId])) {
+            return $menus;
+        }
+
+        foreach ($groupedMenus[$parentId] as $row) {
+            // Rekursi untuk child (in-memory)
+            $childMenu = $this->_buildMenuTree($row->id, $groupedMenus, $userPermissions);
+
+            // Pengecekan permission (in-memory)
+            $class = strtolower((string)$row->class);
+            $method = strtolower((string)$row->method);
+
+            $hasPermission = false;
+            if (in_array($class, $this->exceptAuth['class']) || in_array($method, $this->exceptAuth['method'])) {
+                $hasPermission = true;
+            } else if (isset($userPermissions[$class][$method])) {
+                $hasPermission = true;
+            }
 
             // Jika punya akses atau ini adalah menu folder (tanpa class/aco)
             if ($hasPermission || $row->aco_id == 0 || $row->class == null) {
@@ -408,7 +457,7 @@ class User extends CustomModel
                     'menuname'    => $row->menuname,
                     'menu_icon'   => $row->menu_icon,
                     'link'        => $row->link,
-                    'menuno'      => substr($row->menukode, -1),
+                    'menuno'      => substr((string)$row->menukode, -1),
                     'menukode'    => $row->menukode,
                     'menuexe'     => $row->class,
                     'class'       => $row->class,
