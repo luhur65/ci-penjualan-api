@@ -6,6 +6,7 @@ use App\Controllers\BaseController;
 use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\API\ResponseTrait;
 use App\Models\Role as RoleModel;
+use App\Services\RoleService;
 
 class RoleController extends BaseController
 {
@@ -28,6 +29,8 @@ class RoleController extends BaseController
     }
 
     /**
+     * Creates a new Role.
+     *
      * @ClassName 
      * @Keterangan TAMBAH DATA
      */
@@ -51,13 +54,13 @@ class RoleController extends BaseController
                 ], 422);
             }
 
-            $role   = $roleModel->processStore($data);
+            $roleService = new RoleService();
+            $roleService->create($data);
 
             $db->transComplete();
 
             return $this->respond([
                 'message' => 'Berhasil disimpan',
-                'data'    => $role,
             ]);
         } catch (\Throwable $th) {
 
@@ -71,6 +74,8 @@ class RoleController extends BaseController
     }
 
     /**
+     * Updates an existing Role by ID.
+     *
      * @ClassName 
      * @Keterangan UBAH DATA
      */
@@ -96,13 +101,13 @@ class RoleController extends BaseController
                 ], 422);
             }
 
-            $role   = $roleModel->processUpdate($data);
+            $roleService = new RoleService();
+            $roleService->update($data);
 
             $db->transComplete();
 
             return $this->respond([
                 'message' => 'Berhasil disimpan',
-                'data'    => $role,
             ]);
         } catch (\Throwable $th) {
 
@@ -127,6 +132,8 @@ class RoleController extends BaseController
     }
 
     /**
+     * Deletes a Role by ID.
+     *
      * @ClassName 
      * @Keterangan HAPUS DATA
      */
@@ -138,13 +145,17 @@ class RoleController extends BaseController
             return $this->failNotFound("Role not found");
         }
 
-        $roleModel = new RoleModel();
-        $roleModel->delete($id);
+        try {
+            $roleService = new RoleService();
+            $roleService->delete($id);
 
-        return $this->respond([
-            'message' => 'Berhasil dihapus',
-            'data'    => $role,
-        ]);
+            return $this->respond([
+                'message' => 'Berhasil dihapus',
+                'data'    => $role,
+            ]);
+        } catch (\Throwable $th) {
+            return $this->failServerError($th->getMessage());
+        }
     }
 
     public function fieldLength()
