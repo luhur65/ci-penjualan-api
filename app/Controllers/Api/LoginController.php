@@ -30,7 +30,7 @@ class LoginController extends BaseController
         $user = $userModel->withRoles($username);
 
         if(!$user){
-            return $this->failNotFound('User tidak ditemukan');
+            return $this->failNotFound('Autentikasi gagal');
         }
 
         if ($user['password'] === "" || $user['password'] === null) {
@@ -38,7 +38,7 @@ class LoginController extends BaseController
         }
 
         if(!password_verify($password, $user['password'])){
-            return $this->failUnauthorized('Password salah');
+            return $this->failUnauthorized('Autentikasi gagal');
         }
 
         $payload = [
