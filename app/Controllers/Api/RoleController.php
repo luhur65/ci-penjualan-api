@@ -145,15 +145,21 @@ class RoleController extends BaseController
             return $this->failNotFound("Role not found");
         }
 
+        $db = db_connect();
+        $db->transStart();
+
         try {
             $roleService = new RoleService();
             $roleService->delete($id);
+
+            $db->transComplete();
 
             return $this->respond([
                 'message' => 'Berhasil dihapus',
                 'data'    => $role,
             ]);
         } catch (\Throwable $th) {
+            $db->transRollback();
             return $this->failServerError($th->getMessage());
         }
     }

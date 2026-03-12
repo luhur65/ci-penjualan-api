@@ -14,11 +14,6 @@ class UserService
     protected $userModel;
     protected $userRoleModel;
     protected $db;
-    protected $exceptAuth = [
-        'class'  => [],
-        'method' => []
-    ];
-
     public function __construct()
     {
         $this->userModel = new User();
@@ -214,7 +209,13 @@ class UserService
 
     private function _validatePermission($class = null, $method = null, $userid): bool
     {
-        if (in_array(strtolower($class), $this->exceptAuth['class'])) {
+        // Use reflection to access the protected $exceptAuth property on the User model
+        $reflection = new \ReflectionClass($this->userModel);
+        $exceptAuthProperty = $reflection->getProperty('exceptAuth');
+        $exceptAuthProperty->setAccessible(true);
+        $exceptAuth = $exceptAuthProperty->getValue($this->userModel);
+
+        if (in_array(strtolower($class), $exceptAuth['class'])) {
             return true;
         }
 
@@ -234,7 +235,7 @@ class UserService
 
         $data = $builder->get()->getResult();
 
-        if ($this->in_array_custom($method, $data) == false && in_array($method, $this->exceptAuth['method']) == false) {
+        if ($this->in_array_custom($method, $data) == false && in_array($method, $exceptAuth['method']) == false) {
             return false;
         }
 

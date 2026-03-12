@@ -155,33 +155,6 @@ class Acos extends CustomModel
         $query->limit($this->params['limit'], $this->params['offset']);
     }
 
-    public function processStore($data)
-    {
-        if (!$this->insert($data)) {
-            throw new \Exception("Error storing ACOS.");
-        }
-
-        return true;
-    }
-
-    public function processUpdate($data)
-    {
-        if (!$this->update($data['id'], $data)) {
-            throw new \Exception("Error updating ACOS.");
-        }
-
-        return true;
-    }
-
-    public function processDelete($id)
-    {
-        if (!$this->delete($id)) {
-            throw new \Exception("Error deleting ACOS.");
-        }
-
-        return true;
-    }
-
     public function getAcosByClass($class)
     {
         return $this->where('class', $class)->first();

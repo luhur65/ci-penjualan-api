@@ -6,6 +6,7 @@ use App\Models\Menu;
 use App\Models\Acos;
 use App\Libraries\ControllerInspector;
 use Config\Database;
+use App\Services\AcosService;
 
 /**
  * Service class for handling Menu business logic.
@@ -14,12 +15,14 @@ class MenuService
 {
     protected $menuModel;
     protected $acosModel;
+    protected $acosService;
     protected $db;
 
     public function __construct()
     {
         $this->menuModel = new Menu();
         $this->acosModel = new Acos();
+        $this->acosService = new AcosService();
         $this->db = Database::connect();
     }
 
@@ -44,7 +47,7 @@ class MenuService
                 $classHeader = $className;
 
                 // Simpan ACO untuk method utama
-                $this->acosModel->processStore([
+                $this->acosService->create([
                     'class' => $className,
                     'method' => $item['method'],
                     'nama' => $item['name'],
@@ -67,7 +70,7 @@ class MenuService
                                 ->where('method', 'index')
                                 ->first()['id'] ?? 0;
 
-                            $this->acosModel->processStore([
+                            $this->acosService->create([
                                 'class' => $detailClassName,
                                 'method' => $detailItem['method'],
                                 'nama' => $detailItem['name'],
@@ -156,7 +159,7 @@ class MenuService
 
                     if ($aco) {
                         // Update keterangan dan modifiedby jika sudah ada
-                        $this->acosModel->processUpdate([
+                        $this->acosService->update([
                             'id' => $aco['id'],
                             'class' => $className,
                             'method' => $item['method'],
@@ -165,7 +168,7 @@ class MenuService
                         ]);
                     } else {
                         // Insert baru method baru yang belum ada
-                        $this->acosModel->processStore([
+                        $this->acosService->create([
                             'class' => $className,
                             'method' => $item['method'],
                             'nama' => $item['name'],
@@ -195,7 +198,7 @@ class MenuService
                                     ->first();
 
                                 if ($existing) {
-                                    $this->acosModel->processUpdate([
+                                    $this->acosService->update([
                                         'id' => $existing['id'],
                                         'nama' => $detailItem['name'],
                                         'keterangan' => $item['keterangan'],
@@ -203,7 +206,7 @@ class MenuService
                                         'method' => $detailItem['method'],
                                     ]);
                                 } else {
-                                    $this->acosModel->processStore([
+                                    $this->acosService->create([
                                         'class' => $detailClassName,
                                         'method' => $detailItem['method'],
                                         'nama' => $detailItem['name'],
