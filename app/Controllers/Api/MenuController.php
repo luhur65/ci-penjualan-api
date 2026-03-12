@@ -6,8 +6,7 @@ use App\Controllers\BaseController;
 use CodeIgniter\API\ResponseTrait;
 use App\Libraries\ControllerInspector;
 use App\Models\Menu as MenuModel;
-// use CodeIgniter\RESTful\ResourceController;
-// use CodeIgniter\HTTP\RequestInterface;
+use App\Services\MenuService;
 
 class MenuController extends BaseController
 {
@@ -44,6 +43,8 @@ class MenuController extends BaseController
     }
 
     /**
+     * Creates a new Menu.
+     *
      * @ClassName 
      * @Keterangan TAMBAH DATA
      */
@@ -73,18 +74,8 @@ class MenuController extends BaseController
                 ], 422);
             }
 
-            // Validasi & Simpan via Model
-            // $rules = [
-            //     'controller' => 'required|max_length[100]'
-            // ];
-
-            // if (!$this->validate($rules)) {
-            //     return $this->respond([
-            //         'errors' => $this->validator->getErrors()
-            //     ], 422);
-            // }
-
-            $menu   = $menuModel->processStore($data);
+            $menuService = new MenuService();
+            $menu = $menuService->create($data);
 
             $db->transComplete();
 
@@ -105,6 +96,8 @@ class MenuController extends BaseController
     }
 
     /**
+     * Updates an existing Menu by ID.
+     *
      * @ClassName 
      * @Keterangan UPDATE DATA
      */
@@ -134,7 +127,8 @@ class MenuController extends BaseController
                 ], 422);
             }
 
-            $menu   = $menuModel->processUpdate($data);
+            $menuService = new MenuService();
+            $menu = $menuService->update($data);
 
             $db->transComplete();
 
@@ -155,6 +149,8 @@ class MenuController extends BaseController
     }
 
     /**
+     * Deletes a Menu by ID.
+     *
      * @ClassName 
      * @Keterangan DELETE DATA
      */
@@ -164,8 +160,8 @@ class MenuController extends BaseController
         $db->transStart();
 
         try {
-            $menuModel = new MenuModel();
-            $menu = $menuModel->processDelete($id);
+            $menuService = new MenuService();
+            $menu = $menuService->delete($id);
 
             $db->transComplete();
 
