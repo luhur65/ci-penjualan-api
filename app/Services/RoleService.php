@@ -3,9 +3,9 @@
 namespace App\Services;
 
 use App\Models\Role;
-use App\Models\Acl;
 use Config\Database;
 use App\Services\UserService;
+use App\Services\AclService;
 
 /**
  * Service class for handling Role business logic.
@@ -13,14 +13,14 @@ use App\Services\UserService;
 class RoleService
 {
     protected $roleModel;
-    protected $aclModel;
+    protected $aclService;
     protected $userService;
     protected $db;
 
     public function __construct()
     {
         $this->roleModel = new Role();
-        $this->aclModel = new Acl();
+        $this->aclService = new AclService();
         $this->userService = new UserService();
         $this->db = Database::connect();
     }
@@ -54,7 +54,7 @@ class RoleService
             throw new \Exception("Error updating role.");
         }
 
-        $this->aclModel->where('role_id', $data['id'])->delete();
+        $this->aclService->deleteByRoleId($data['id']);
 
         $acos = [];
         foreach ($data['acosIds'] as $acoId) {
@@ -65,7 +65,7 @@ class RoleService
         }
 
         if (!empty($acos)) {
-            $this->aclModel->insertBatch($acos);
+            $this->aclService->insertBatch($acos);
         }
 
         $queryUser = $this->db->table('userroles a')
