@@ -3,13 +3,26 @@
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
-use CodeIgniter\HTTP\ResponseInterface;
 use CodeIgniter\API\ResponseTrait;
-use App\Models\Role as RoleModel;
+use App\Models\Role;
+use App\Services\RoleService;
+use CodeIgniter\HTTP\IncomingRequest;
 
 class RoleController extends BaseController
 {
     use ResponseTrait;
+
+    protected $roleService;
+    protected $roleModel;
+
+    /** @var IncomingRequest $request */
+    protected $request;
+
+    public function __construct()
+    {
+        $this->roleService = new RoleService();
+        $this->roleModel = new Role();
+    }
 
     /**
      * @ClassName 
@@ -17,17 +30,24 @@ class RoleController extends BaseController
      */
     public function index()
     {
-        $roles = new RoleModel();
-        return $this->respond([
-            'data' => $roles->get(),
-            'attributes' => [
-                'totalRows' => $roles->totalRows,
-                'totalPages' => $roles->totalPages
-            ]
-        ]);
+        $requestData = $this->request->getGet();
+        return $this->respond($this->roleService->getAllRoles($requestData));
+    }
+
+    public function show($id = null)
+    {
+        $role = $this->roleService->getRoleById($id);
+
+        if (!$role) {
+            return $this->failNotFound("Role not found");
+        }
+
+        return $this->respond($role);
     }
 
     /**
+     * Creates a new Role.
+     * 
      * @ClassName 
      * @Keterangan TAMBAH DATA
      */
@@ -37,40 +57,34 @@ class RoleController extends BaseController
 
         $data = [
             'rolename'   => $payload['rolename'] ?? '',
+            'modified_by'   => $this->authUserName() ?? null,
         ];
 
-        $db = db_connect();
-        $db->transStart();
-
         try {
-            $roleModel = new RoleModel();
-
-            if (!$roleModel->validate($data)) {
+            if (!$this->roleModel->validate($data)) {
                 return $this->respond([
-                    'errors' => $roleModel->errors()
+                    'errors' => $this->roleModel->errors()
                 ], 422);
             }
 
-            $role   = $roleModel->processStore($data);
+            $result = $this->roleService->create($data, $payload);
 
-            $db->transComplete();
-
-            return $this->respond([
+            return $this->respondCreated([
                 'message' => 'Berhasil disimpan',
-                'data'    => $role,
+                'data'    => $result,
             ]);
         } catch (\Throwable $th) {
-
-            $db->transRollback();
-
-            return $this->respond([
-                'message' => $th->getMessage(),
-                'error' => $th->getLine(),
-            ])->setStatusCode(500);
+            return $this->failServerError($th->getMessage());
+            // return $this->respond([
+            //     'message' => $th->getMessage(),
+            //     'error' => $th->getLine(),
+            // ])->setStatusCode(500);
         }
     }
 
     /**
+     * Updates an existing Role by ID.
+     * 
      * @ClassName 
      * @Keterangan UBAH DATA
      */
@@ -82,74 +96,71 @@ class RoleController extends BaseController
             'id'         => $id,
             'rolename'   => $payload['rolename'] ?? '',
             'acosIds'    => \json_decode($payload['acosIds']) ?? '',
+            'modified_by'   => $this->authUserName() ?? null,
         ];
 
-        $db = db_connect();
-        $db->transStart();
-
         try {
-            $roleModel = new RoleModel();
-
-            if (!$roleModel->validate($data)) {
+            if (!$this->roleModel->validate($data)) {
                 return $this->respond([
-                    'errors' => $roleModel->errors()
+                    'errors' => $this->roleModel->errors()
                 ], 422);
             }
 
-            $role   = $roleModel->processUpdate($data);
+            $result = $this->roleService->update($data, $payload);
 
-            $db->transComplete();
-
-            return $this->respond([
+            return $this->respondUpdated([
                 'message' => 'Berhasil disimpan',
-                'data'    => $role,
+                'data'    => $result,
             ]);
+            
         } catch (\Throwable $th) {
-
-            $db->transRollback();
-
-            return $this->respond([
-                'message' => $th->getMessage(),
-                'error' => $th->getTrace(),
-            ])->setStatusCode(500);
+            return $this->failServerError($th->getMessage());
+            // return $this->respond([
+            //     'message' => $th->getMessage(),
+            //     'error' => $th->getTrace(),
+            // ])->setStatusCode(500);
         }
-    }
-
-    public function show($id = null)
-    {
-        $role = (new RoleModel())->findOne($id);
-
-        if (!$role) {
-            return $this->failNotFound("Role not found");
-        }
-
-        return $this->respond($role);
     }
 
     /**
+     * Deletes a Role by ID.
+     * 
      * @ClassName 
      * @Keterangan HAPUS DATA
      */
     public function delete($id = null)
     {
-        $role = (new RoleModel())->findOne($id);
+        $role = $this->roleModel->find($id);
+        $payload = $this->request->getJSON(true);
 
         if (!$role) {
             return $this->failNotFound("Role not found");
         }
 
-        $roleModel = new RoleModel();
-        $roleModel->delete($id);
+        try {
+            $result = $this->roleService->delete($id, $payload);
 
-        return $this->respond([
-            'message' => 'Berhasil dihapus',
-            'data'    => $role,
-        ]);
+            return $this->respondDeleted([
+                'message' => 'Berhasil dihapus',
+                'data'    => $result,
+            ]);
+
+        } catch (\Throwable $th) {
+            return $this->failServerError($th->getMessage());
+        }
+    }
+
+    /**
+     * @ClassName 
+     * @Keterangan EKSPOR DATA
+     */
+    public function export()
+    {
+        return "export";
     }
 
     public function fieldLength()
     {
-        $model = new RoleModel();
-        return $this->respond($model->getFieldLengths());
+        return $this->respond($this->roleModel->getFieldLengths());
     }
 }

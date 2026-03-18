@@ -6,6 +6,7 @@ use App\Controllers\Api\UserController;
 use App\Controllers\Api\MenuController;
 use App\Controllers\Api\RoleController;
 use App\Controllers\Api\AcosController;
+use App\Controllers\Api\ParameterController;
 
 /**
  * @var RouteCollection $routes
@@ -25,6 +26,11 @@ $routes->group("api", function ($routes) {
 
     $routes->post('forgot-password', [LoginController::class, 'forgotPassword']);
     $routes->post('reset-password', [LoginController::class, 'resetPassword']);
+});
+
+$routes->group("api", ['filter' => ['jwtFilter']], function ($routes) {
+    $routes->get('parameter/combo', [ParameterController::class, 'getCombo']);
+    $routes->get('parameter/lookup', [ParameterController::class, 'lookup']);
 });
 
 $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($routes) {
@@ -47,5 +53,9 @@ $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($route
     $routes->get('menu/controllers', [MenuController::class, 'getAllClass']);
     $routes->get('menu/parents', [MenuController::class, 'getMenuParent']);
     $routes->resource('menu', ['namespace' => '', 'controller' => MenuController::class]);
+
+    // parameter routes
+    $routes->get('parameter/fieldlength', [ParameterController::class, 'fieldLength']);
+    $routes->resource('parameters', ['namespace' => '', 'controller' => ParameterController::class]);
 
 });

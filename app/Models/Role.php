@@ -8,12 +8,28 @@ class Role extends CustomModel
 {
     protected $table            = 'roles';
     protected $primaryKey       = 'id';
+    protected $sortDirection    = 'ASC';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
     protected $protectFields    = true;
     protected $allowedFields    = [
         'rolename',
+        'modified_by',
+    ];
+
+    protected $fieldMap = [
+        'rolename' => 'roles.rolename',
+        'modifiedby' => 'roles.modified_by',
+        'updated_at' => 'roles.updated_at',
+        'created_at' => 'roles.created_at'
+    ];
+
+    protected $searchableFields = [
+        'rolename',
+        'modifiedby',
+        'updated_at',
+        'created_at'
     ];
 
     protected bool $allowEmptyInserts = false;
@@ -52,28 +68,14 @@ class Role extends CustomModel
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
 
-    public function get()
+
+    public function getALl()
     {
-        // $builder = $this->db->table($this->table);
-        // $query = $builder->get();
-        // return $query->getResultArray();
-
-        $this->setRequestParameters();
-
         // Base query
-        $builder = $this->builder();
-        $builder->select('id, rolename, updated_at, created_at');
+        $query = $this->builder();
+        $query->select('id, rolename, modified_by as modifiedby, updated_at, created_at');
 
-        $this->filter($builder);
-        $this->sort($builder);
-        $this->pagination($builder);
-
-        $data = $builder->get()->getResult();
-
-        $this->totalRows = $builder->countAllResults(false);
-        $this->totalPages = ($this->totalRows > 0) ? ceil($this->totalRows / $this->params['limit']) : 1;
-
-        return $data;
+        return $this->datatable($query);
     }
 
     public function findOne($id = null)
@@ -96,143 +98,69 @@ class Role extends CustomModel
         ];
     }
 
-    public function sort($query) 
-    {
-        $query->orderBy($this->params['sidx'], $this->params['sord']);
-    }
+    // public function sort($query) 
+    // {
+    //     $query->orderBy($this->params['sidx'], $this->params['sord']);
+    // }
 
-    public function filter(&$query)
-    {
-        $filters = $this->params['filters'] ?? [];
+    // public function pagination($query)
+    // {
+    //     $query->limit($this->params['limit'], $this->params['offset']);
+    // }
 
-        if (
-            empty($filters) ||
-            empty($filters['rules']) ||
-            $filters['rules'][0]['data'] === ''
-        ) {
-            return $query;
-        }
+    // public function filter(&$query)
+    // {
+    //     $filters = $this->params['filters'] ?? [];
 
-        $groupOp = strtoupper($filters['groupOp']);
+    //     if (
+    //         empty($filters) ||
+    //         empty($filters['rules']) ||
+    //         $filters['rules'][0]['data'] === ''
+    //     ) {
+    //         return $query;
+    //     }
 
-        foreach ($filters['rules'] as $rule) {
+    //     $groupOp = strtoupper($filters['groupOp']);
 
-            $field = $rule['field'];
-            $value = trim($rule['data']);
-            $isDate = in_array($field, ['created_at', 'updated_at']);
+    //     foreach ($filters['rules'] as $rule) {
 
-            // untuk field text
-            $likeText = "%{$value}%";
+    //         $field = $rule['field'];
+    //         $value = trim($rule['data']);
+    //         $isDate = in_array($field, ['created_at', 'updated_at']);
 
-            // untuk field DATE_FORMAT
-            $likeDate = "'%{$value}%'";  // WAJIB STRING LITERAL
+    //         // untuk field text
+    //         $likeText = "%{$value}%";
 
-            $dateExpr = "DATE_FORMAT({$this->table}.{$field}, '%d-%m-%Y %H:%i:%s')";
+    //         // untuk field DATE_FORMAT
+    //         $likeDate = "'%{$value}%'";  // WAJIB STRING LITERAL
 
-            if ($groupOp === 'AND') {
+    //         $dateExpr = "DATE_FORMAT({$this->table}.{$field}, '%d-%m-%Y %H:%i:%s')";
 
-                if ($isDate) {
-                    // LIKE untuk date
-                    $query->where("$dateExpr LIKE $likeDate", null, false);
-                } else {
-                    // LIKE normal CI4
-                    $query->like("{$this->table}.{$field}", $value);
-                }
+    //         if ($groupOp === 'AND') {
 
-            } else { // OR
+    //             if ($isDate) {
+    //                 // LIKE untuk date
+    //                 $query->where("$dateExpr LIKE $likeDate", null, false);
+    //             } else {
+    //                 // LIKE normal CI4
+    //                 $query->like("{$this->table}.{$field}", $value);
+    //             }
 
-                if ($isDate) {
-                    $query->orWhere("$dateExpr LIKE $likeDate", null, false);
-                } else {
-                    $query->orLike("{$this->table}.{$field}", $value);
-                }
-            }
-        }
+    //         } else { // OR
 
-        $this->totalRows = $query->countAllResults(false);
-        $limit = $this->params['limit'] ?? 10;
-        $this->totalPages = ceil($this->totalRows / $limit);
+    //             if ($isDate) {
+    //                 $query->orWhere("$dateExpr LIKE $likeDate", null, false);
+    //             } else {
+    //                 $query->orLike("{$this->table}.{$field}", $value);
+    //             }
+    //         }
+    //     }
 
-        return $query;
-    }
+    //     $this->totalRows = $query->countAllResults(false);
+    //     $limit = $this->params['limit'] ?? 10;
+    //     $this->totalPages = ceil($this->totalRows / $limit);
 
-    public function pagination($query) 
-    {
-        $query->limit($this->params['limit'], $this->params['offset']);
-    }
-
-    public function processStore($data)
-    {
-        if (!$this->insert($data)) {
-            throw new \Exception("Error storing role.");
-        }
-
-        return true;
-    }
-
-    public function processUpdate($data)
-    {
-        if (!$this->update($data['id'], $data)) {
-            throw new \Exception("Error updating role.");
-        }
-
-        $userModel = new User();
-        $aclModel = new Acl();
-        $aclModel->where('role_id', $data['id'])->delete();
-
-        $acos = [];
-        foreach ($data['acosIds'] as $acoId) {
-            $acos[] = [
-                'aco_id'  => $acoId,
-                'role_id' => $data['id'],
-            ];
-        }
-
-        if (!empty($acos)) {
-            $aclModel->insertBatch($acos);
-        }
-
-        // 6. Query user dengan role tersebut
-        // Menggunakan Query Builder CI4. 
-        // Catatan: Jika Anda mutlak membutuhkan isolasi 'readuncommitted' SQL Server, Anda harus menggunakan $db->query() secara mentah.
-        $queryUser = $this->db->table('userroles a')
-            ->select('a.user_id')
-            ->where('a.role_id', $data['id'])
-            ->groupBy('a.user_id')
-            ->get()
-            ->getResultArray();
-
-        // 7. Update menu user
-        foreach ($queryUser as $item) {
-            $userId = $item['user_id'];
-
-            // Asumsi getMenu dan printRecursiveMenu sudah dikonversi ke dalam UserModel CI4
-            $getMenu = $userModel->getMenu($userId);
-            $listMenu = $userModel->printRecursiveMenu($getMenu, false);
-
-            // Update langsung via Query Builder
-            $this->db->table('users')
-                ->where('id', $userId)
-                ->update([
-                    'menu' => $listMenu
-                ]);
-        }
-
-        return true;
-    }
-
-    public function processDelete($id)
-    {
-
-        $role = $this->find($id);
-
-        if (empty($role)) {
-            throw new \Exception("Role with ID {$id} not found.");
-        }
-
-        $this->delete($id);
-
-        return true;
-    }
+    //     return $query;
+    // }
 
 }

@@ -8,6 +8,7 @@ class Acos extends CustomModel
 {
     protected $table            = 'acos';
     protected $primaryKey       = 'id';
+    protected $sortDirection    = 'ASC';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
@@ -17,7 +18,26 @@ class Acos extends CustomModel
         'method',
         'nama',
         'idheader',
-        'keterangan'
+        'keterangan',
+        'modified_by'
+    ];
+
+    protected $fieldMap = [
+        'class' => 'acos.class',
+        'method' => 'acos.method',
+        'nama' => 'acos.nama',
+        'idheader' => 'acos.idheader',
+        'keterangan' => 'acos.keterangan',
+        'modified_by' => 'acos.modified_by'
+    ];
+
+    protected $searchableFields = [
+        'class',
+        'method',
+        'nama',
+        'idheader',
+        'keterangan',
+        'modified_by'
     ];
 
     protected bool $allowEmptyInserts = false;
@@ -52,11 +72,9 @@ class Acos extends CustomModel
 
     public function get()
     {
-        $this->setRequestParameters();
-
         // Base query
-        $builder = $this->builder();
-        $builder->select([
+        $query = $this->builder();
+        $query->select([
             'id',
             'class',
             'method',
@@ -65,16 +83,7 @@ class Acos extends CustomModel
             'keterangan'
         ]);
 
-        $this->filter($builder);
-        $this->sort($builder);
-        $this->pagination($builder);
-
-        $data = $builder->get()->getResult();
-
-        $this->totalRows = $builder->countAllResults(false);
-        $this->totalPages = ($this->totalRows > 0) ? ceil($this->totalRows / $this->params['limit']) : 1;
-
-        return $data;
+        return $this->datatable($query);
     }
 
     public function findOne($id = null)
@@ -90,101 +99,74 @@ class Acos extends CustomModel
         ];
     }
 
-    public function sort($query)
-    {
-        $query->orderBy($this->params['sidx'], $this->params['sord']);
-    }
-
-    public function filter(&$query)
-    {
-        $filters = $this->params['filters'] ?? [];
-
-        if (
-            empty($filters) ||
-            empty($filters['rules']) ||
-            $filters['rules'][0]['data'] === ''
-        ) {
-            return $query;
-        }
-
-        $groupOp = strtoupper($filters['groupOp']);
-
-        foreach ($filters['rules'] as $rule) {
-
-            $field = $rule['field'];
-            $value = trim($rule['data']);
-            $isDate = in_array($field, ['created_at', 'updated_at']);
-
-            // untuk field text
-            $likeText = "%{$value}%";
-
-            // untuk field DATE_FORMAT
-            $likeDate = "'%{$value}%'";  // WAJIB STRING LITERAL
-
-            $dateExpr = "DATE_FORMAT({$this->table}.{$field}, '%d-%m-%Y %H:%i:%s')";
-
-            if ($groupOp === 'AND') {
-
-                if ($isDate) {
-                    // LIKE untuk date
-                    $query->where("$dateExpr LIKE $likeDate", null, false);
-                } else {
-                    // LIKE normal CI4
-                    $query->like("{$this->table}.{$field}", $value);
-                }
-
-            } else { // OR
-
-                if ($isDate) {
-                    $query->orWhere("$dateExpr LIKE $likeDate", null, false);
-                } else {
-                    $query->orLike("{$this->table}.{$field}", $value);
-                }
-            }
-        }
-
-        $this->totalRows = $query->countAllResults(false);
-        $limit = $this->params['limit'] ?? 10;
-        $this->totalPages = ceil($this->totalRows / $limit);
-
-        return $query;
-    }
-
-    public function pagination($query)
-    {
-        $query->limit($this->params['limit'], $this->params['offset']);
-    }
-
-    public function processStore($data)
-    {
-        if (!$this->insert($data)) {
-            throw new \Exception("Error storing ACOS.");
-        }
-
-        return true;
-    }
-
-    public function processUpdate($data)
-    {
-        if (!$this->update($data['id'], $data)) {
-            throw new \Exception("Error updating ACOS.");
-        }
-
-        return true;
-    }
-
-    public function processDelete($id)
-    {
-        if (!$this->delete($id)) {
-            throw new \Exception("Error deleting ACOS.");
-        }
-
-        return true;
-    }
-
     public function getAcosByClass($class)
     {
         return $this->where('class', $class)->first();
     }
+
+    // public function sort($query)
+    // {
+    //     $query->orderBy($this->params['sidx'], $this->params['sord']);
+    // }
+
+    // public function pagination($query)
+    // {
+    //     $query->limit($this->params['limit'], $this->params['offset']);
+    // }
+
+    // public function filter(&$query)
+    // {
+    //     $filters = $this->params['filters'] ?? [];
+
+    //     if (
+    //         empty($filters) ||
+    //         empty($filters['rules']) ||
+    //         $filters['rules'][0]['data'] === ''
+    //     ) {
+    //         return $query;
+    //     }
+
+    //     $groupOp = strtoupper($filters['groupOp']);
+
+    //     foreach ($filters['rules'] as $rule) {
+
+    //         $field = $rule['field'];
+    //         $value = trim($rule['data']);
+    //         $isDate = in_array($field, ['created_at', 'updated_at']);
+
+    //         // untuk field text
+    //         $likeText = "%{$value}%";
+
+    //         // untuk field DATE_FORMAT
+    //         $likeDate = "'%{$value}%'";  // WAJIB STRING LITERAL
+
+    //         $dateExpr = "DATE_FORMAT({$this->table}.{$field}, '%d-%m-%Y %H:%i:%s')";
+
+    //         if ($groupOp === 'AND') {
+
+    //             if ($isDate) {
+    //                 // LIKE untuk date
+    //                 $query->where("$dateExpr LIKE $likeDate", null, false);
+    //             } else {
+    //                 // LIKE normal CI4
+    //                 $query->like("{$this->table}.{$field}", $value);
+    //             }
+
+    //         } else { // OR
+
+    //             if ($isDate) {
+    //                 $query->orWhere("$dateExpr LIKE $likeDate", null, false);
+    //             } else {
+    //                 $query->orLike("{$this->table}.{$field}", $value);
+    //             }
+    //         }
+    //     }
+
+    //     $this->totalRows = $query->countAllResults(false);
+    //     $limit = $this->params['limit'] ?? 10;
+    //     $this->totalPages = ceil($this->totalRows / $limit);
+
+    //     return $query;
+    // }
 
 }

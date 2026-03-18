@@ -56,8 +56,23 @@ abstract class BaseController extends Controller
 
         // E.g.: $this->session = service('session');
         // $this->request = $request;
-        // $this->response = service('response');
-        // $this->request = service('request');
+        $this->response = service('response');
+        $this->request = service('request');
         
+    }
+
+    protected function getUserData()
+    {
+        return $this->request->getServer('jwtUser');
+    }
+
+    protected function authUserName()
+    {
+        return $this->getUserData()['name'] ?? null;
+    }
+
+    protected function authUserId()
+    {
+        return $this->getUserData()['id'] ?? null;
     }
 }

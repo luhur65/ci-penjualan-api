@@ -5,10 +5,25 @@ namespace App\Controllers\Api;
 use App\Controllers\BaseController;
 use CodeIgniter\API\ResponseTrait;
 use App\Models\User as UserModel;
+use App\Services\UserService;
+use CodeIgniter\HTTP\IncomingRequest;
 
 class UserController extends BaseController
 {
     use ResponseTrait;
+
+    protected $userModel;
+    protected $userService;
+
+    /** @var IncomingRequest $request */
+    protected $request;
+
+    public function __construct()
+    {
+        $this->userModel   = new UserModel();
+        $this->userService = new UserService();
+    }
+
     
     /**
      * @ClassName 
@@ -16,85 +31,69 @@ class UserController extends BaseController
      */
     public function index()
     {
-        $users = new UserModel();
-        return $this->respond([
-            'data' => $users->getAll(),
-            'attributes' => [
-                'totalRows' => $users->totalRows,
-                'totalPages' => $users->totalPages
-            ]
-        ]);
+        $requestData = $this->request->getGet();
+        return $this->respond($this->userService->getAllUsers($requestData));
     }
 
     public function show($id = null)
     {
-        $user = (new UserModel())->findOne($id);
-
+        $user = $this->userService->getUserById($id);
         if (!$user) {
             return $this->failNotFound("User not found");
         }
-
         return $this->respond($user);
     }
 
     /**
+     * Creates a new User.
+     *
      * @ClassName 
      * @Keterangan TAMBAH DATA
      */
     public function create()
     {
-        
         try {
-
-            // Ambil data dari request dengan method getJSON
+            $authUserName = $this->authUserName();  
             $payload = $this->request->getJSON(true); // true = associative array
-
-            // if (!$payload) {
-            //     return $this->response->setJSON([
-            //         'message' => 'Invalid JSON payload'
-            //     ])->setStatusCode(400);
-            // }
 
             $data = [
                 'fullname' => $payload['fullname'] ?? null,
                 'email'    => $payload['email'] ?? null,
                 'username' => $payload['username'] ?? null,
+                'modified_by' => $authUserName ?? null,
+                'statusaktif' => $payload['statusaktif'] ?? null,
             ];
 
             // Validasi manual menggunakan validate()
-            $userModel = new UserModel();
-            if (!$userModel->validate($data)) {
-                // return $this->failValidationErrors($userModel->errors());
-                return $this->respond([
-                    'errors' => $userModel->errors()  // Menyertakan pesan error validasi
+            if (!$this->userModel->validate($data)) {
+                return $this->respondCreated([
+                    'errors' => $this->userModel->errors()  // Menyertakan pesan error validasi
                 ], 422);  // Status code 422 for unprocessable entity
             }
 
-            // Proses penyimpanan
-            $user = $userModel->proccesStore($data);
+            // Proses penyimpanan ke service
+            $result = $this->userService->create($data, $payload);
 
-            if ($user) {
-                return $this->respondCreated([
-                    'message' => 'User successfully created',
-                    'data'    => $user  // Mengembalikan instance model yang baru disimpan
-                ]);
-            } else {
-                return $this->fail('Failed to create user');
-            }
+            return $this->respondCreated([
+                'message' => 'User successfully created',
+                'data' => $result
+            ]);
             
         } catch (\Throwable $th) {
-            throw $th;
+            return $this->failServerError($th->getMessage());
         }
     }
 
     /**
+     * Updates an existing User by ID.
+     *
      * @ClassName 
      * @Keterangan UPDATE DATA
      */
     public function update($id = null)
     {
         try {
-
+            $authUserName = $this->authUserName();
             $payload = $this->request->getJSON(true); // true = associative array
 
             $data = [
@@ -103,53 +102,52 @@ class UserController extends BaseController
                 'email'    => $payload['email'] ?? null,
                 'username' => $payload['username'] ?? null,
                 'role_ids' => $payload['role_ids'] ?? [],
+                'modified_by' => $authUserName ?? null,
+                'statusaktif' => $payload['statusaktif'] ?? null,
             ];
 
-            $userModel = new UserModel();
-            if (!$userModel->validate($data)) {
-                return $this->respond([
-                    'errors' => $userModel->errors()
+            if (!$this->userModel->validate($data)) {
+                return $this->respondUpdated([
+                    'errors' => $this->userModel->errors()
                 ], 422);
             }
 
-            $user = $userModel->proccesUpdate($data);
+            $result = $this->userService->update($data, $payload);
 
-            if ($user) {
-                return $this->respondUpdated([
-                    'message' => 'User successfully updated',
-                    // 'data'    => $user
-                ]);
-            } else {
-                return $this->fail('Failed to update user');
-            }
+            return $this->respondUpdated([
+                'message' => 'User successfully updated',
+                'data' => $result
+            ]);
             
         } catch (\Throwable $th) {
-            throw $th;
+            return $this->failServerError($th->getMessage());
         }
     }
 
     /**
+     * Deletes a User by ID.
+     *
      * @ClassName 
      * @Keterangan DELETE DATA
      */
     public function delete($id = null)
     {
+        $user = $this->userModel->find($id);
+        $payload = $this->request->getJSON(true);
+
+        if (!$user) {
+            return $this->failNotFound("User not found");
+        }
+
         try {
-            $userModel = new UserModel();
-            $user = $userModel->find($id);
 
-            if (!$user) {
-                return $this->respond([
-                    'message' => $this->failNotFound("User not found")->getReasonPhrase()
-                ], 404);
-            }
-
-            $userModel->proccesDelete($id);
+            $result = $this->userService->delete($id, $payload);
 
             return $this->respondDeleted([
                 'message' => 'User successfully deleted',
-                'data'    => $user
+                'data' => $result
             ]);
+
         } catch (\Throwable $th) {
             return $this->failServerError($th->getMessage());
         }
@@ -161,15 +159,22 @@ class UserController extends BaseController
      */
     public function export()
     {
-        $userModel = new UserModel();
-        $users = $userModel->getAll();
+        $users = $this->userModel->getAll();
         return $this->respond($users);
+    }
+
+    /**
+     * @ClassName 
+     * @Keterangan REPORT DATA
+     */
+    public function report()
+    {
+        return "Report Data User";
     }
 
     public function fieldLength()
     {
-        $model = new UserModel();
-        return $this->respond($model->getFieldLengths());
+        return $this->respond($this->userModel->getFieldLengths());
     }
 
 }
