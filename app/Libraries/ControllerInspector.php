@@ -247,8 +247,10 @@ class ControllerInspector
     {
         $dir = APPPATH . 'Controllers/Api/';
         $files = scandir($dir);
-
         $data = [];
+
+        // Ubah "role" atau "RoleController" murni menjadi "role"
+        $targetBase = strtolower(str_replace('controller', '', strtolower($controllerName)));
 
         foreach ($files as $file) {
             if (!is_file($dir . $file) || !str_ends_with($file, '.php')) {
@@ -259,7 +261,12 @@ class ControllerInspector
             $classes = $this->getPhpClasses($phpCode);
 
             foreach ($classes as $class) {
-                if ($class === $controllerName) {
+
+                // Ubah "RoleController" (dari folder) murni menjadi "role"
+                $classBase = strtolower(str_replace('controller', '', strtolower($class)));
+
+                // Bandingkan nama dasarnya saja ("role" === "role")
+                if ($classBase === $targetBase) {
 
                     // load class jika belum diload
                     $fullClass = "App\\Controllers\\Api\\{$class}";
@@ -272,9 +279,14 @@ class ControllerInspector
                     foreach ($methods as $method) {
                         $doc = $method['docComment'];
 
-                        if (isset($doc['ClassName'])) {
+                        // Syarat pencarian (Pastikan method memiliki komentar @ClassName atau @Keterangan)
+                        if (
+                            isset($doc['ClassName']) ||
+                            isset($doc['Keterangan']) ||
+                            isset($doc['Detail'])
+                        ) {
 
-                            $detail = $doc['Detail'] ?? [''];
+                            $detail = $doc['Detail'] ?? [];
                             $keterangan = $doc['Keterangan'][0] ?? '';
 
                             $data[] = [

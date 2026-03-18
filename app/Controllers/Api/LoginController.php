@@ -10,14 +10,17 @@ use App\Models\RefreshTokenModel;
 use App\Models\PasswordReset;
 use CodeIgniter\I18n\Time;
 use App\Libraries\EmailSender;
+use CodeIgniter\HTTP\IncomingRequest;
 
 class LoginController extends BaseController
 {
     use ResponseTrait;
 
+    /** @var IncomingRequest $request */
+    protected $request;
+
     public function index()
     {
-
         $userModel = new User();
         $username = $this->request->getPost('username');
         $password = $this->request->getPost('password');

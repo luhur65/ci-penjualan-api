@@ -4,11 +4,21 @@ namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use CodeIgniter\API\ResponseTrait;
-use App\Models\Acos;
+use App\Services\AcosService;
+use CodeIgniter\HTTP\IncomingRequest;
 
 class AcosController extends BaseController
 {
     use ResponseTrait;
+
+    /** @var IncomingRequest $request */
+    protected $request;
+    protected $acosService;
+
+    public function __construct()
+    {
+        $this->acosService = new AcosService();
+    }
 
 
     /**
@@ -17,13 +27,7 @@ class AcosController extends BaseController
      */
     public function index()
     {
-        $acos = new Acos();
-        return $this->respond([
-            'data' => $acos->get(),
-            'attributes' => [
-                'totalRows' => $acos->totalRows,
-                'totalPages' => $acos->totalPages
-            ]
-        ]);
+        $requestData = $this->request->getGetPost();
+        return $this->respond($this->acosService->getAllAcos($requestData));
     }
 }

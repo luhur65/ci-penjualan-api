@@ -3,16 +3,28 @@
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
-use CodeIgniter\API\ResponseTrait;
-use App\Libraries\ControllerInspector;
-use App\Models\Menu as MenuModel;
-// use CodeIgniter\RESTful\ResourceController;
-// use CodeIgniter\HTTP\RequestInterface;
+use CodeIgniter\API\ResponseTrait;  
+use App\Models\Menu;
+use App\Services\MenuService;
+use CodeIgniter\HTTP\IncomingRequest;
 
 class MenuController extends BaseController
 {
 
     use ResponseTrait;
+
+    /** @var IncomingRequest $request */
+    protected $request;
+
+    protected $menuService;
+    protected $menuModel;
+
+
+    public function __construct()
+    {
+        $this->menuService = new MenuService();
+        $this->menuModel = new Menu();
+    }
 
     /**
      * @ClassName 
@@ -20,23 +32,13 @@ class MenuController extends BaseController
      */
     public function index()
     {
-        $menu = new MenuModel();
-
-        return $this->respond([
-            'data' => $menu->get(),
-            'attributes' => [
-                'totalRows' => $menu->totalRows,
-                'totalPages' => $menu->totalPages
-            ]
-        ]);
-
+        $requestData = $this->request->getGet();
+        return $this->respond($this->menuService->getAllMenus($requestData));
     }
 
     public function show($id = null)
     {
-        $menu = (new MenuModel())->findOne($id);
-
-        if (!$menu) {
+        if (!$menu = $this->menuModel->findOne($id)) {
             return $this->failNotFound("Menu not found");
         }
 
@@ -53,58 +55,41 @@ class MenuController extends BaseController
 
         // Ambil semua post data
         $data = [
-            'menuname'   => $payload['menuname'] ?? '',
-            'menu_seq'    => $payload['menu_seq'] ?? 0,
-            'menu_icon'   => $payload['menu_icon'] ?? '',
+            'menuname'      => $payload['menuname'] ?? '',
+            'menu_seq'      => $payload['menu_seq'] ?? 0,
+            'menu_icon'     => $payload['menu_icon'] ?? '',
             'menu_parent'   => $payload['menu_parent'] ?? 0,
-            'link' => $payload['link'] ?? '',
-            'controller' => $payload['controller'] ?? '',
+            'link'          => $payload['link'] ?? '',
+            'controller'    => $payload['controller'] ?? '',
+            'modified_by'   => $this->authUserName() ?? null,
         ];
 
-        $db = db_connect();
-        $db->transStart();
-
         try {
-            $menuModel = new MenuModel();
-
-            if (!$menuModel->validate($data)) {
+            if (!$this->menuModel->validate($data)) {
                 return $this->respond([
-                    'errors' => $menuModel->errors()
+                    'errors' => $this->menuModel->errors()
                 ], 422);
             }
 
-            // Validasi & Simpan via Model
-            // $rules = [
-            //     'controller' => 'required|max_length[100]'
-            // ];
+            $result = $this->menuService->create($data, $payload);
 
-            // if (!$this->validate($rules)) {
-            //     return $this->respond([
-            //         'errors' => $this->validator->getErrors()
-            //     ], 422);
-            // }
 
-            $menu   = $menuModel->processStore($data);
-
-            $db->transComplete();
-
-            return $this->respond([
-                'message' => 'Berhasil disimpan',
-                'data'    => $menu,
+            return $this->respondCreated([
+                'message' => 'Data berhasil disimpan',
+                'data'    => $result,
             ]);
-
         } catch (\Throwable $th) {
-
-            $db->transRollback();
-
-            return $this->respond([
-                'message' => $th->getMessage(),
-                'error' => $th->getLine(),
-            ])->setStatusCode(500);
+            return $this->failServerError($th->getMessage());
+            // return $this->respond([
+            //     'message' => $th->getMessage(),
+            //     'error' => $th->getLine(),
+            // ])->setStatusCode(500);
         }
     }
 
     /**
+     * Updates an existing Menu by ID.
+     * 
      * @ClassName 
      * @Keterangan UPDATE DATA
      */
@@ -113,113 +98,110 @@ class MenuController extends BaseController
         $payload = $this->request->getJSON(true);
 
         $data = [
-            'id' => $id,
-            'menuname'   => $payload['menuname'] ?? '',
-            'menu_seq'    => $payload['menu_seq'] ?? 0,
-            'menu_icon'   => $payload['menu_icon'] ?? '',
+            'id'            => $id,
+            'menuname'      => $payload['menuname'] ?? '',
+            'menu_seq'      => $payload['menu_seq'] ?? 0,
+            'menu_icon'     => $payload['menu_icon'] ?? '',
             'menu_parent'   => $payload['menu_parent'] ?? 0,
-            'link' => $payload['link'] ?? '',
-            'controller' => $payload['controller'] ?? '',
+            'link'          => $payload['link'] ?? '',
+            'controller'    => $payload['controller'] ?? '',
+            'modified_by'   => $this->authUserName() ?? null,
         ];
 
-        $db = db_connect();
-        $db->transStart();
-
         try {
-            $menuModel = new MenuModel();
-
-            if (!$menuModel->validate($data)) {
+            if (!$this->menuModel->validate($data)) {
                 return $this->respond([
-                    'errors' => $menuModel->errors()
+                    'errors' => $this->menuModel->errors()
                 ], 422);
             }
 
-            $menu   = $menuModel->processUpdate($data);
-
-            $db->transComplete();
+            $result = $this->menuService->update($data, $payload);
 
             return $this->respondUpdated([
-                'message' => 'Menu berhasil diupdate',
-                'data'    => $menu,
+                'message' => 'Data berhasil diupdate',
+                'data'    => $result,
             ]);
-
         } catch (\Throwable $th) {
-
-            $db->transRollback();
-
-            return $this->respond([
-                'message' => $th->getMessage(),
-                'error' => $th->getTrace(),
-            ])->setStatusCode(500);
+            return $this->failServerError($th->getMessage());
+            // return $this->respond([
+            //     'message' => $th->getMessage(),
+            //     'error' => $th->getTrace(),
+            // ])->setStatusCode(500);
         }
     }
 
     /**
+     * Deletes a Menu by ID.
+     * 
      * @ClassName 
      * @Keterangan DELETE DATA
      */
     public function delete($id = null)
     {
-        $db = db_connect();
-        $db->transStart();
-
+        $payload = $this->request->getJSON(true);
         try {
-            $menuModel = new MenuModel();
-            $menu = $menuModel->processDelete($id);
-
-            $db->transComplete();
+            $result = $this->menuService->delete($id, $payload);
 
             return $this->respondDeleted([
-                'message' => 'Menu berhasil dihapus',
-                'data'    => $menu,
+                'message' => 'Data berhasil dihapus',
+                'data'    => $result,
             ]);
-
         } catch (\Throwable $th) {
-
-            $db->transRollback();
-
-            return $this->respond([
-                'message' => $th->getMessage(),
-                'error' => $th->getTrace(),
-            ])->setStatusCode(500);
+            return $this->failServerError($th->getMessage());
+            // return $this->respond([
+            //     'message' => $th->getMessage(),
+            //     'error' => $th->getTrace(),
+            // ])->setStatusCode(500);
         }
     }
 
-    
+
     /**
      * @ClassName 
      * @Keterangan REPORT DATA
-    */
+     */
     public function report() {}
-    
+
     /**
      * @ClassName 
      * @Keterangan EXPORT KE EXCEL
-    */
+     */
     public function export() {}
 
     public function fieldLength()
     {
-        $model = new MenuModel();
-        return $this->respond($model->getFieldLengths());
+        try {
+            $result = $this->menuModel->getFieldLengths();
+            return $this->respond([
+                'data' => $result
+            ]);
+        } catch (\Throwable $th) {
+            return $this->failServerError($th->getMessage());
+        }
     }
 
 
     public function getAllClass()
     {
-        $model = new MenuModel();
-        $classes = $model->getController();
-    
-        return $this->respond([
-            'data'   => $classes
-        ]);
+        try {
+            $classes = $this->menuService->getController();
+            return $this->respond([
+                'data'   => $classes
+            ]);
+        } catch (\Throwable $th) {
+            return $this->failServerError($th->getMessage());
+        }
     }
 
     public function getMenuParent()
     {
-        $model = new MenuModel();
-        return $this->respond([
-            'data' => $model->getMenuParent()
-        ]);
+        try {
+            $result = $this->menuService->getMenuParent();
+            return $this->respond([
+                'data' => $result
+            ]);
+        } catch (\Throwable $th) {
+            return $this->failServerError($th->getMessage());
+        }
     }
 }

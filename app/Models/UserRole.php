@@ -8,6 +8,7 @@ class UserRole extends Model
 {
     protected $table            = 'userroles';
     protected $primaryKey       = 'id';
+    protected $sortDirection    = 'ASC';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
@@ -15,6 +16,7 @@ class UserRole extends Model
     protected $allowedFields    = [
         'user_id',
         'role_id',
+        'modified_by'
     ];
 
     protected bool $allowEmptyInserts = false;

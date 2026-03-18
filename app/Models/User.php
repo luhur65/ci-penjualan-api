@@ -9,6 +9,7 @@ class User extends CustomModel
 {
     protected $table            = 'users';
     protected $primaryKey       = 'id';
+    protected $sortDirection    = 'ASC';
     protected $useAutoIncrement = true;
     protected $returnType       = 'array';
     protected $useSoftDeletes   = false;
@@ -18,6 +19,28 @@ class User extends CustomModel
         'email',
         'username',
         'password',
+        'modified_by',
+        'status_aktif'
+    ];
+
+    protected $fieldMap = [
+        'fullname' => 'users.fullname',
+        'email' => 'users.email',
+        'username' => 'users.username',
+        'statusaktif' => 'users.status_aktif',
+        'modifiedby' => 'users.modified_by',
+        'created_at' => 'users.created_at',
+        'updated_at' => 'users.updated_at'
+    ];
+
+    protected $searchableFields = [
+        'fullname',
+        'email',
+        'username',
+        'statusaktif',
+        'modifiedby',
+        'created_at',
+        'updated_at'
     ];
 
     protected bool $allowEmptyInserts = false;
@@ -39,6 +62,7 @@ class User extends CustomModel
         'fullname' => 'required|max_length[254]|min_length[3]|alpha_space',
         'email'    => 'required|max_length[254]|valid_email|is_unique[users.email,id,{id}]',
         'username' => 'required|max_length[30]|alpha_numeric_space|min_length[3]|is_unique[users.username,id,{id}]',
+        'statusaktif' => 'permit_empty|is_natural_no_zero',
     ];
     protected $validationMessages   = [
         'id' => [
@@ -59,6 +83,9 @@ class User extends CustomModel
         ],
         'password' => [
             'required' => 'Password is required',
+        ],
+        'statusaktif' => [
+            'is_natural_no_zero' => 'Status aktif is invalid',
         ],
     ];
     protected $skipValidation       = false;
@@ -83,15 +110,11 @@ class User extends CustomModel
 
     // Model
     protected $userRoleModel;
-    protected $roleModel;
-    protected $menuModel;
 
     public function __construct()
-    { 
+    {
         parent::__construct();
         $this->userRoleModel = new UserRole();
-        $this->roleModel = new Role();
-        $this->menuModel = new Menu();
     }
 
     // public function withRole($username)
@@ -111,7 +134,6 @@ class User extends CustomModel
             ->where('users.username', $username)
             ->get()
             ->getResultArray();
-        // dd($rows);
 
         if (empty($rows)) return null;
 
@@ -135,36 +157,30 @@ class User extends CustomModel
 
     public function getAll()
     {
-        $this->setRequestParameters();
-
         // ===== QUERY COUNT (CLONE BUILDER) =====
         // $countBuilder = $this->builder();
         // $countBuilder->select('id');
 
         // $this->filter($countBuilder);
-        
+
         // ===== QUERY DATA =====
         $query = $this->builder();
         $query->select([
-            'id',
-            'fullname',
-            'email',
-            'username',
-            'created_at',
-            'updated_at'
-        ]);
+            'users.id',
+            'users.fullname',
+            'users.email',
+            'users.username',
+            'users.modified_by as modifiedby',
+            'parameters.memo as statusaktif',
+            'users.created_at',
+            'users.updated_at'
+        ])
+            ->join('parameters', 'parameters.id = users.status_aktif', 'left');
 
         // $query->where('deleted_at', NULL);
 
-        $this->filter($query);
-        $this->sort($query);
-        $this->pagination($query);
-
-        $this->totalRows = $query->countAllResults(false);
-        $this->totalPages = ceil($this->totalRows / $this->params['limit']);
-
         // return $query->get()->getResult();
-        return $query->get()->getResult();
+        return $this->datatable($query);
     }
 
 
@@ -177,6 +193,7 @@ class User extends CustomModel
                 'u.fullname',
                 'u.email',
                 'u.username',
+                'u.status_aktif as statusaktif',
             ])
             ->where('u.id', $id)
             ->get()
@@ -206,70 +223,74 @@ class User extends CustomModel
         ];
     }
 
-    public function sort($query) 
-    {
-        return $query->orderBy($this->params['sidx'], $this->params['sord']);
-    }
+    // kalau mau di overide pun bisa
+    // public function sort(&$query)
+    // {
+    //     return $query->orderBy($this->params['sidx'], $this->params['sord']);
+    // }
 
-    public function pagination($query)
-    {
-        return $query->limit($this->params['limit'], $this->params['offset']);
-    }
+    // public function pagination(&$query)
+    // {
+    //     return $query->limit($this->params['limit'], $this->params['offset']);
+    // }
 
-    public function filter(&$query)
-    {
-        $filters = $this->params['filters'] ?? [];
+    // public function filter(&$query)
+    // {
+    //     $filters = $this->params['filters'] ?? [];
 
-        if (
-            empty($filters) ||
-            empty($filters['rules']) ||
-            $filters['rules'][0]['data'] === ''
-        ) {
-            return $query;
-        }
+    //     if (
+    //         empty($filters) ||
+    //         empty($filters['rules']) ||
+    //         $filters['rules'][0]['data'] === ''
+    //     ) {
+    //         return $query;
+    //     }
 
-        $groupOp = strtoupper($filters['groupOp']);
+    //     $groupOp = strtoupper($filters['groupOp']);
 
-        foreach ($filters['rules'] as $rule) {
+    //     foreach ($filters['rules'] as $rule) {
 
-            $field = $rule['field'];
-            $value = trim($rule['data']);
-            $isDate = in_array($field, ['created_at', 'updated_at']);
+    //         $field = $rule['field'];
+    //         $value = trim($rule['data']);
+    //         $isDate = in_array($field, ['created_at', 'updated_at']);
 
-            // untuk field text
-            $likeText = "%{$value}%";
+    //         // untuk field text
+    //         $likeText = "%{$value}%";
 
-            // untuk field DATE_FORMAT
-            $likeDate = "'%{$value}%'";  // WAJIB STRING LITERAL
+    //         // untuk field DATE_FORMAT
+    //         $likeDate = "'%{$value}%'";  // WAJIB STRING LITERAL
 
-            $dateExpr = "DATE_FORMAT({$this->table}.{$field}, '%d-%m-%Y %H:%i:%s')";
+    //         $dateExpr = "DATE_FORMAT({$this->table}.{$field}, '%d-%m-%Y %H:%i:%s')";
 
-            if ($groupOp === 'AND') {
+    //         if ($groupOp === 'AND') {
 
-                if ($isDate) {
-                    // LIKE untuk date
-                    $query->where("$dateExpr LIKE $likeDate", null, false);
-                } else {
-                    // LIKE normal CI4
-                    $query->like("{$this->table}.{$field}", $value);
-                }
+    //             if ($isDate) {
+    //                 // LIKE untuk date
+    //                 $query->where("$dateExpr LIKE $likeDate", null, false);
+    //             } else if ($field == 'statusaktif') {
+    //                 $query->where('parameter.id', $value);
+    //             } else {
+    //                 // LIKE normal CI4
+    //                 $query->like("{$this->table}.{$field}", $value);
+    //             }
+    //         } else { // OR
 
-            } else { // OR
+    //             if ($isDate) {
+    //                 $query->orWhere("$dateExpr LIKE $likeDate", null, false);
+    //             } else {
+    //                 $query->orLike("{$this->table}.{$field}", $value);
+    //             }
+    //         }
+    //     }
 
-                if ($isDate) {
-                    $query->orWhere("$dateExpr LIKE $likeDate", null, false);
-                } else {
-                    $query->orLike("{$this->table}.{$field}", $value);
-                }
-            }
-        }
+    //     // \dd($query->getCompiledSelect());
 
-        // $this->totalRows = $query->countAllResults(false);
-        // $limit = $this->params['limit'] ?? 10;
-        // $this->totalPages = ceil($this->totalRows / $limit);
+    //     // $this->totalRows = $query->countAllResults(false);
+    //     // $limit = $this->params['limit'] ?? 10;
+    //     // $this->totalPages = ceil($this->totalRows / $limit);
 
-        return $query;
-    }
+    //     return $query;
+    // }
 
     public function updatePasswordById(int $id, string $hash): bool
     {
