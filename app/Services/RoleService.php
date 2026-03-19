@@ -175,8 +175,7 @@ class RoleService
     
             $this->roleModel->delete($id);
 
-            $position = $this->roleModel->getPosition($id, $params);
-
+            $position = $this->roleModel->getPosition($id, $params, true);
             $this->roleModel->db->transCommit();
             return $position;
             
