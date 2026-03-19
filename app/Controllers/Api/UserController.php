@@ -66,7 +66,7 @@ class UserController extends BaseController
 
             // Validasi manual menggunakan validate()
             if (!$this->userModel->validate($data)) {
-                return $this->respondCreated([
+                return $this->respond([
                     'errors' => $this->userModel->errors()  // Menyertakan pesan error validasi
                 ], 422);  // Status code 422 for unprocessable entity
             }
@@ -107,7 +107,7 @@ class UserController extends BaseController
             ];
 
             if (!$this->userModel->validate($data)) {
-                return $this->respondUpdated([
+                return $this->respond([
                     'errors' => $this->userModel->errors()
                 ], 422);
             }
