@@ -311,7 +311,7 @@ class MenuService
   
       $this->menuModel->delete($id);
   
-      $position = $this->menuModel->getPosition($id, $params);
+      $position = $this->menuModel->getPosition($id, $params, true);
       $this->db->transCommit();
 
       return $position;
