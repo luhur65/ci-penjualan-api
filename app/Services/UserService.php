@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserRole;
+use App\Models\UserAcl;
 use App\Services\ParameterService;
 use Config\Database;
 
@@ -15,6 +16,7 @@ class UserService
     protected $userModel;
     protected $parameterService;
     protected $userRoleModel;
+    protected $userAclModel;
     protected $db;
     protected $exceptAuth = [
         'class'  => [],
@@ -26,6 +28,7 @@ class UserService
         $this->userModel = new User();
         $this->parameterService = new ParameterService();
         $this->userRoleModel = new UserRole();
+        $this->userAclModel = new UserAcl();
         $this->db = Database::connect();
     }
 
@@ -51,6 +54,16 @@ class UserService
     public function getUserById($id)
     {
         return $this->userModel->findOne($id);
+    }
+
+    public function getRoleByUserId($id, array $params)
+    {
+        return $this->userRoleModel->setRequestParameters($params)->getRoleByUserId($id);
+    }
+
+    public function getAclByUserId($id, array $params)
+    {
+        return $this->userAclModel->setRequestParameters($params)->getAclByUserId($id);
     }
 
     /**
@@ -109,6 +122,7 @@ class UserService
                 throw new \Exception("Error updating user.");
             }
 
+            // \dd($params);
             $position = $this->userModel->getPosition($data['id'], $params);
 
             $this->userRoleModel->where('user_id', $data['id'])->delete();
@@ -145,17 +159,19 @@ class UserService
         $this->userModel->db->transBegin();
 
         try {
+            // 1. Cari tetangga DULU sebelum delete
+            $position = $this->userModel->getPosition($id, $params, true);
+
+            // 2. Baru delete user
             if (!$this->userModel->delete($id)) {
                 throw new \Exception("Error deleting user.");
             }
 
-            $position = $this->userModel->getPosition($id, $params, true);
-
+            // 3. Hapus roles
             $this->userRoleModel->where('user_id', $id)->delete();
 
             $this->userModel->db->transCommit();
             return $position;
-
         } catch (\Throwable $th) {
             $this->userModel->db->transRollback();
             log_message('error', $th->getMessage());

@@ -31,6 +31,8 @@ $routes->group("api", function ($routes) {
 $routes->group("api", ['filter' => ['jwtFilter']], function ($routes) {
     $routes->get('parameter/combo', [ParameterController::class, 'getCombo']);
     $routes->get('parameter/lookup', [ParameterController::class, 'lookup']);
+    $routes->get('users/(:num)/roles', [UserController::class, 'getUserRoles']);
+    $routes->get('users/(:num)/acls', [UserController::class, 'getUserAcls']);
 });
 
 $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($routes) {
@@ -52,6 +54,7 @@ $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($route
     $routes->get('menu/fieldlength', [MenuController::class, 'fieldLength']);
     $routes->get('menu/controllers', [MenuController::class, 'getAllClass']);
     $routes->get('menu/parents', [MenuController::class, 'getMenuParent']);
+    $routes->get('menu/export', [MenuController::class, 'export']);
     $routes->resource('menu', ['namespace' => '', 'controller' => MenuController::class]);
 
     // parameter routes

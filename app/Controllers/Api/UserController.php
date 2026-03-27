@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Libraries\ExcelMaker;
 use CodeIgniter\API\ResponseTrait;
 use App\Models\User as UserModel;
 use App\Services\UserService;
@@ -41,6 +42,20 @@ class UserController extends BaseController
         if (!$user) {
             return $this->failNotFound("User not found");
         }
+        return $this->respond($user);
+    }
+
+    public function getUserRoles($id = null)
+    {
+        $requestData = $this->request->getGet();
+        $user = $this->userService->getRoleByUserId($id, $requestData);
+        return $this->respond($user);
+    }
+    
+    public function getUserAcls($id = null)
+    {
+        $requestData = $this->request->getGet();
+        $user = $this->userService->getAclByUserId($id, $requestData);
         return $this->respond($user);
     }
 
@@ -159,8 +174,36 @@ class UserController extends BaseController
      */
     public function export()
     {
-        $users = $this->userModel->getAll();
-        return $this->respond($users);
+        $users = $this->userService->getAllUsers($this->request->getGet());
+        $excelData = [];
+
+        // (Opsional) Jika Anda mengirimkan 'offset' dari FE, nomor urut bisa disesuaikan
+        $offset = $this->request->getGet('offset') ?? 0;
+
+        foreach ($users['data'] as $index => $user) {
+
+            $statusData = json_decode($user->statusaktif, true);
+            $statusMemo = $statusData['MEMO'] ?? '';
+
+            $excelData[] = [
+                $offset + $index + 1,      // Nomor Urut yang akurat
+                $user->fullname ?? '',
+                $user->email ?? '',
+                $user->username ?? '',
+                $statusMemo,               
+                $user->modifiedby ?? '',
+                $user->created_at ?? '',
+                $user->updated_at ?? ''
+            ];
+        }
+
+        // 4. Tentukan Judul Kolom
+        $headers = ['NO', 'NAMA LENGKAP', 'EMAIL', 'USERNAME', 'STATUS AKTIF', 'MODIFIED BY', 'CREATED AT', 'UPDATED AT'];
+
+        // dd($excelData);
+
+        $excelService = new ExcelMaker();
+        return $excelService->generate('Laporan_User_' . date('Ymd_His'), $headers, $excelData);
     }
 
     /**
