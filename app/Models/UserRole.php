@@ -2,9 +2,7 @@
 
 namespace App\Models;
 
-use CodeIgniter\Model;
-
-class UserRole extends Model
+class UserRole extends CustomModel
 {
     protected $table            = 'userroles';
     protected $primaryKey       = 'id';
@@ -17,6 +15,22 @@ class UserRole extends Model
         'user_id',
         'role_id',
         'modified_by'
+    ];
+
+    protected $fieldMap = [
+        'rolename' => 'roles.rolename',
+        'user' => 'users.fullname',
+        'modifiedby' => 'userroles.modified_by',
+        'created_at' => 'userroles.created_at',
+        'updated_at' => 'userroles.updated_at'
+    ];
+
+    protected $searchableFields = [
+        'rolename',
+        'user',
+        'modifiedby',
+        'created_at',
+        'updated_at'
     ];
 
     protected bool $allowEmptyInserts = false;
@@ -58,4 +72,26 @@ class UserRole extends Model
     protected $afterFind      = [];
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
+
+    public function getRoleByUserId($id)
+    {
+        $query = $this->builder()
+            ->select([
+                "$this->table.id",
+                "$this->table.user_id",
+                "$this->table.role_id",
+                "roles.rolename",
+                "users.fullname as user",
+                "$this->table.modified_by as modifiedby",
+                "$this->table.created_at",
+                "$this->table.updated_at"
+            ])
+            ->join("roles", "roles.id = $this->table.role_id", "left")
+            ->join("users", "users.id = $this->table.user_id", "left")
+            ->where("$this->table.user_id", $id);
+        // ->get()
+        // ->getResultArray();
+
+        return $this->datatable($query);
+    }
 }

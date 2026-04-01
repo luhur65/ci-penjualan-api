@@ -204,23 +204,19 @@ class User extends CustomModel
         }
 
         // Ambil roles user
-        $roles = $this->db->table('roles r')
-            ->select([
-                'r.id as role_id',
-                'r.rolename as role',
-                'r.created_at',
-                'r.updated_at'
-            ])
-            ->join('userroles ur', 'ur.role_id = r.id')
-            ->where('ur.user_id', $id)
-            ->get()
-            ->getResult();
+        // $roles = $this->db->table('roles r')
+        //     ->select([
+        //         'r.id as role_id',
+        //         'r.rolename as role',
+        //         'r.created_at',
+        //         'r.updated_at'
+        //     ])
+        //     ->join('userroles ur', 'ur.role_id = r.id')
+        //     ->where('ur.user_id', $id)
+        //     ->get()
+        //     ->getResult();
 
-        // Return sebagai array
-        return [
-            'data' => $user,
-            'roles' => $roles
-        ];
+        return $user;
     }
 
     // kalau mau di overide pun bisa

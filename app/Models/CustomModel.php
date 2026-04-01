@@ -54,9 +54,9 @@ class CustomModel extends Model
 
     public function filter(&$query)
     {
+        $db = \Config\Database::connect();
         $filtersRaw = $this->params['filters'] ?? '';
 
-        // 3. Konversi String JSON menjadi Array PHP (Jika wujudnya masih string)
         if (is_string($filtersRaw)) {
             $filters = json_decode($filtersRaw, true);
         } else {
@@ -67,39 +67,44 @@ class CustomModel extends Model
             return $query;
         }
 
-        $groupOp = strtoupper($filters['groupOp'] ?? 'AND');
-
+        $validRules = [];
         foreach ($filters['rules'] as $rule) {
-
             $field = $rule['field'];
-            $value = trim($rule['data']);
-            $isDate = in_array($field, $this->dateFields);
+            $value = $rule['data'];
 
-            if ($value === '' || $value === '0') { // all data 
-                continue;
-            }
-
-            // Hanya filter field yang diperbolehkan
+            if ($value === '' || $value === '0') continue;
             if (!in_array($field, $this->searchableFields)) continue;
 
+            $validRules[] = $rule;
+        }
+
+        if (empty($validRules)) {
+            return $query;
+        }
+
+        $rawSqlConditions = [];
+        foreach ($validRules as $rule) {
+            $field = $rule['field'];
+
+            $value = $db->escapeLikeString($rule['data']);
+
+            $isDate = in_array($field, $this->dateFields);
             $dbField = $this->mapField($field);
 
-            if ($groupOp === 'AND') {
-                if ($isDate) {
-                    $query->where("DATE_FORMAT({$dbField}, '%d-%m-%Y %H:%i:%s') LIKE '%{$value}%'", null, false);
-                } else {
-                    $query->like($dbField, $value);
-                }
-            } else { // OR
-                if ($isDate) {
-                    $query->orWhere("DATE_FORMAT({$dbField}, '%d-%m-%Y %H:%i:%s') LIKE '%{$value}%'", null, false);
-                } else {
-                    $query->orLike($dbField, $value);
-                }
+            if ($isDate) {
+                $rawSqlConditions[] = "DATE_FORMAT({$dbField}, '%d-%m-%Y %H:%i:%s') LIKE '%{$value}%' ESCAPE '!'";
+            } else {
+                $rawSqlConditions[] = "{$dbField} LIKE '%{$value}%' ESCAPE '!'";
             }
         }
 
-        // dd($query->getCompiledSelect());
+        // Gabungkan semua kondisi dengan kata " OR "
+        // Hasilnya: "roles.rolename LIKE '%U%' ESCAPE '!' OR userroles.modified_by LIKE '%U%' ESCAPE '!'"
+        $combinedSql = implode(' OR ', $rawSqlConditions);
+
+        // Bungkus string gabungan tadi dengan tanda kurung () secara manual dan lempar ke where()
+        // Parameter 'false' di akhir sangat penting agar CI4 tidak merusak/mengubah string kita
+        $query->where("($combinedSql)", null, false);
 
         return $query;
     }
@@ -172,11 +177,176 @@ class CustomModel extends Model
     /**
      * Mencari posisi baris dan halaman untuk JQGrid tanpa Temporary Table
      */
+    // public function getPosition(int $id, array $params = [], bool $isDeleting = false)
+    // {
+    //     $this->params = $params;
+
+    //     // 1. Ambil parameter pengurutan dari JQGrid    
+    //     $page = (int) ($this->params['page'] ?? 1);
+    //     $limit = (int) ($this->params['limit'] ?? 10);
+    //     $sidx = $this->params['sortIndex'] ?? $this->primaryKey;
+    //     $sord = strtoupper($this->params['sortOrder'] ?? $this->sortDirection);
+
+    //     if (!in_array($sidx, $this->searchableFields)) {
+    //         $sidx = $this->primaryKey;
+    //     }
+
+    //     if (!in_array($sord, ['ASC', 'DESC'])) {
+    //         $sord = $this->sortDirection;
+    //     }
+
+    //     $builder = $this->builder();
+
+    //     // 2. KUNCI PERFORMA: Gunakan fungsi bawaan ROW_NUMBER() OVER()
+    //     $builder->select("{$this->table}.{$this->primaryKey}, ROW_NUMBER() OVER (ORDER BY {$sidx} {$sord}, {$this->table}.{$this->primaryKey} ASC) AS position", false);
+
+    //     // 3. Terapkan filter pencarian aktif (jika ada)
+    //     $this->filter($builder);
+
+    //     // 4. Jika mode hapus → hitung posisi tanpa query ke DB
+    //     // if ($isDeleting) {
+
+    //     //     $indexRow = (int) ($this->params['indexRow'] ?? 1);
+
+    //     //     $sqlBase = $builder->getCompiledSelect();
+
+    //     //     // 🔥 ambil row terdekat dari posisi sekarang
+    //     //     $sql = "
+    //     //         SELECT {$this->primaryKey}, position 
+    //     //         FROM ({$sqlBase}) AS ordered_query
+    //     //         WHERE position = ?
+    //     //         ORDER BY position ASC
+    //     //         LIMIT 1
+    //     //     ";
+
+    //     //     $query = $this->db->query($sql, [$indexRow]);
+
+    //     //     if ($query === false) {
+    //     //         $error = $this->db->error();
+    //     //         throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sql);
+    //     //     }
+
+    //     //     $row = $query->getRow();
+
+    //     //     // 🔥 kalau tidak ada (misalnya delete last row)
+    //     //     if (!$row) {
+    //     //         $sqlFallback = "
+    //     //             SELECT {$this->primaryKey}, position 
+    //     //             FROM ({$sqlBase}) AS ordered_query
+    //     //             ORDER BY position DESC
+    //     //             LIMIT 1
+    //     //         ";
+
+    //     //         $queryFallback = $this->db->query($sqlFallback);
+
+    //     //         if ($queryFallback === false) {
+    //     //             $error = $this->db->error();
+    //     //             throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sqlFallback);
+    //     //         }
+
+    //     //         $row = $queryFallback->getRow();
+    //     //     }
+
+    //     //     return [
+    //     //         'id' => $row->id ?? null,
+    //     //         'position' => $row->position ?? 0,
+    //     //         'page' => $row->position ? ceil($row->position / $limit) : 1
+    //     //     ];
+    //     // }
+
+    //     // 4. Jika mode hapus → hitung posisi tanpa query ke DB ( IndexRow nya local)
+    //     if ($isDeleting) {
+
+    //         // [KUNCI PERBAIKAN]: Tangkap indeks lokal (0-9) dari Frontend
+    //         $localIndex = (int) ($this->params['indexRow'] ?? 0);
+
+    //         // Hitung posisi GLOBAL menggunakan rumus matematika Halaman x Limit
+    //         $globalPosition = (($page - 1) * $limit) + $localIndex + 1;
+
+    //         $sqlBase = $builder->getCompiledSelect();
+
+    //         // 🔥 ambil row terdekat berdasarkan posisi GLOBAL
+    //         $sql = "
+    //             SELECT {$this->primaryKey}, position 
+    //             FROM ({$sqlBase}) AS ordered_query
+    //             WHERE position = ?
+    //             ORDER BY position ASC
+    //             LIMIT 1
+    //         ";
+
+    //         // Masukkan variabel $globalPosition, bukan lagi $indexRow mentah
+    //         $query = $this->db->query($sql, [$globalPosition]);
+
+    //         if ($query === false) {
+    //             $error = $this->db->error();
+    //             throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sql);
+    //         }
+
+    //         $row = $query->getRow();
+
+    //         // 🔥 kalau tidak ada (misalnya delete last row di halaman terakhir)
+    //         if (!$row) {
+    //             $sqlFallback = "
+    //                 SELECT {$this->primaryKey}, position 
+    //                 FROM ({$sqlBase}) AS ordered_query
+    //                 ORDER BY position DESC
+    //                 LIMIT 1
+    //             ";
+
+    //             $queryFallback = $this->db->query($sqlFallback);
+
+    //             if ($queryFallback === false) {
+    //                 $error = $this->db->error();
+    //                 throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sqlFallback);
+    //             }
+
+    //             $row = $queryFallback->getRow();
+    //         }
+
+    //         return [
+    //             'id' => $row->id ?? null,
+    //             'position' => $row->position ?? 0,
+    //             'page' => $row->position ? ceil($row->position / $limit) : 1
+    //         ];
+    //     }
+
+    //     // 5. Ekstrak kueri builder menjadi string SQL mentah (Hanya jika bukan mode delete)
+    //     $sqlBase = $builder->getCompiledSelect();
+
+    //     // 6. [KUNCI PERBAIKAN]: Gunakan alias 'ordered_query' pada klausa WHERE
+    //     $sql = "SELECT position FROM ({$sqlBase}) AS ordered_query WHERE ordered_query.{$this->primaryKey} = ?";
+
+    //     \dd($sql);
+
+    //     // 7. Eksekusi kueri akhir secara langsung
+    //     $query = $this->db->query($sql, [$id]);
+
+    //     // \dd($query->getResult());
+
+    //     if ($query === false) {
+    //         $error = $this->db->error();
+    //         throw new \Exception("Database Error: " . $error['message'] . " | SQL: " . $sql);
+    //     }
+
+    //     $row = $query->getRow();
+    //     // return $row ? (int) $row->position : 0;
+    //     return [
+    //         'id' => $id,
+    //         'position' => $row ? (int) $row->position : -1,
+    //         'page' => $row->position ? ceil($row->position / $limit) : 1
+    //     ];
+    // }
+
+
+    /**
+     * Mencari posisi baris dan halaman untuk JQGrid.
+     * Menggunakan array_search (Ringan) untuk Create/Update
+     * Menggunakan SQL Offset (Akurat) untuk posisi Delete
+     */
     public function getPosition(int $id, array $params = [], bool $isDeleting = false)
     {
         $this->params = $params;
 
-        // 1. Ambil parameter pengurutan dari JQGrid    
         $page = (int) ($this->params['page'] ?? 1);
         $limit = (int) ($this->params['limit'] ?? 10);
         $sidx = $this->params['sortIndex'] ?? $this->primaryKey;
@@ -191,140 +361,111 @@ class CustomModel extends Model
         }
 
         $builder = $this->builder();
+        $this->filter($builder); // Terapkan filter aktif JQGrid
 
-        // 2. KUNCI PERFORMA: Gunakan fungsi bawaan ROW_NUMBER() OVER()
-        $builder->select("{$this->table}.{$this->primaryKey}, ROW_NUMBER() OVER (ORDER BY {$sidx} {$sord}, {$this->table}.{$this->primaryKey} ASC) AS position", false);
-
-        // 3. Terapkan filter pencarian aktif (jika ada)
-        $this->filter($builder);
-
-        // 4. Jika mode hapus → hitung posisi tanpa query ke DB
-        // if ($isDeleting) {
-
-        //     $indexRow = (int) ($this->params['indexRow'] ?? 1);
-
-        //     $sqlBase = $builder->getCompiledSelect();
-
-        //     // 🔥 ambil row terdekat dari posisi sekarang
-        //     $sql = "
-        //         SELECT {$this->primaryKey}, position 
-        //         FROM ({$sqlBase}) AS ordered_query
-        //         WHERE position = ?
-        //         ORDER BY position ASC
-        //         LIMIT 1
-        //     ";
-
-        //     $query = $this->db->query($sql, [$indexRow]);
-
-        //     if ($query === false) {
-        //         $error = $this->db->error();
-        //         throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sql);
-        //     }
-
-        //     $row = $query->getRow();
-
-        //     // 🔥 kalau tidak ada (misalnya delete last row)
-        //     if (!$row) {
-        //         $sqlFallback = "
-        //             SELECT {$this->primaryKey}, position 
-        //             FROM ({$sqlBase}) AS ordered_query
-        //             ORDER BY position DESC
-        //             LIMIT 1
-        //         ";
-
-        //         $queryFallback = $this->db->query($sqlFallback);
-
-        //         if ($queryFallback === false) {
-        //             $error = $this->db->error();
-        //             throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sqlFallback);
-        //         }
-
-        //         $row = $queryFallback->getRow();
-        //     }
-
-        //     return [
-        //         'id' => $row->id ?? null,
-        //         'position' => $row->position ?? 0,
-        //         'page' => $row->position ? ceil($row->position / $limit) : 1
-        //     ];
-        // }
-
-        // 4. Jika mode hapus → hitung posisi tanpa query ke DB ( IndexRow nya local)
+        // =========================================================
+        // SKENARIO 1: MODE HAPUS (DELETE)
+        // Kita tidak bisa mencari ID yang sudah terhapus.
+        // Kita harus mencari posisi matematika (Misal: Baris ke-25).
+        // =========================================================
         if ($isDeleting) {
+            // Ambil SEMUA ID terurut SEBELUM delete
+            $allBuilder = $this->builder();
+            $this->filter($allBuilder);
+            $allBuilder->select("{$this->table}.{$this->primaryKey}")
+                ->orderBy($sidx, $sord)
+                ->orderBy($this->table . '.' . $this->primaryKey, 'ASC');
 
-            // [KUNCI PERBAIKAN]: Tangkap indeks lokal (0-9) dari Frontend
-            $localIndex = (int) ($this->params['indexRow'] ?? 0);
+            $records = $allBuilder->get()->getResultArray();
+            $ids = array_column($records, $this->primaryKey);
 
-            // Hitung posisi GLOBAL menggunakan rumus matematika Halaman x Limit
-            $globalPosition = (($page - 1) * $limit) + $localIndex + 1;
+            // Cari posisi data yang akan dihapus
+            $currentIndex = array_search((string)$id, array_map('strval', $ids));
 
-            $sqlBase = $builder->getCompiledSelect();
-
-            // 🔥 ambil row terdekat berdasarkan posisi GLOBAL
-            $sql = "
-                SELECT {$this->primaryKey}, position 
-                FROM ({$sqlBase}) AS ordered_query
-                WHERE position = ?
-                ORDER BY position ASC
-                LIMIT 1
-            ";
-
-            // Masukkan variabel $globalPosition, bukan lagi $indexRow mentah
-            $query = $this->db->query($sql, [$globalPosition]);
-
-            if ($query === false) {
-                $error = $this->db->error();
-                throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sql);
+            if ($currentIndex === false) {
+                return ['id' => null, 'position' => 1, 'page' => 1, 'offset' => 0];
             }
 
-            $row = $query->getRow();
+            // Ambil tetangga: utamakan baris BERIKUTNYA, fallback ke SEBELUMNYA
+            $totalRows = count($ids);
 
-            // 🔥 kalau tidak ada (misalnya delete last row di halaman terakhir)
-            if (!$row) {
-                $sqlFallback = "
-                    SELECT {$this->primaryKey}, position 
-                    FROM ({$sqlBase}) AS ordered_query
-                    ORDER BY position DESC
-                    LIMIT 1
-                ";
-
-                $queryFallback = $this->db->query($sqlFallback);
-
-                if ($queryFallback === false) {
-                    $error = $this->db->error();
-                    throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sqlFallback);
-                }
-
-                $row = $queryFallback->getRow();
+            if ($currentIndex < $totalRows - 1) {
+                // Ada baris di bawahnya → ambil itu
+                $neighborIndex = $currentIndex; // setelah delete, index ini jadi baris berikutnya
+                $neighborId    = $ids[$currentIndex + 1];
+            } elseif ($currentIndex > 0) {
+                // Baris terakhir → ambil yang di atasnya
+                $neighborIndex = $currentIndex - 1;
+                $neighborId    = $ids[$currentIndex - 1];
+            } else {
+                // Satu-satunya data
+                return ['id' => null, 'position' => 1, 'page' => 1, 'offset' => 0];
             }
+
+            $finalPos = $neighborIndex + 1; // 1-based
 
             return [
-                'id' => $row->id ?? null,
-                'position' => $row->position ?? 0,
-                'page' => $row->position ? ceil($row->position / $limit) : 1
+                'id'       => $neighborId,
+                'position' => $finalPos,
+                'page'     => ceil($finalPos / $limit),
+                'offset'   => max(0, $finalPos - 1)
             ];
         }
 
-        // 5. Ekstrak kueri builder menjadi string SQL mentah (Hanya jika bukan mode delete)
-        $sqlBase = $builder->getCompiledSelect();
+        // =========================================================
+        // SKENARIO 2: MODE UBAH/TAMBAH (UPDATE/CREATE)
+        // Menggunakan array_search seperti gaya Laravel
+        // =========================================================
 
-        // 6. [KUNCI PERBAIKAN]: Gunakan alias 'ordered_query' pada klausa WHERE
-        $sql = "SELECT position FROM ({$sqlBase}) AS ordered_query WHERE ordered_query.{$this->primaryKey} = ?";
+        // Ambil SEMUA ID yang lolos filter 
+        $builder->select("{$this->table}.{$this->primaryKey}");
+        // Wajib diurutkan agar posisi array sesuai dengan posisi grid!
+        $builder->orderBy($sidx, $sord);
+        $builder->orderBy($this->table . '.' . $this->primaryKey, 'ASC');
 
-        // 7. Eksekusi kueri akhir secara langsung
-        $query = $this->db->query($sql, [$id]);
+        $records = $builder->get()->getResultArray();
+        $ids = array_column($records, $this->primaryKey);
 
-        if ($query === false) {
-            $error = $this->db->error();
-            throw new \Exception("Database Error: " . $error['message'] . " | SQL: " . $sql);
+        $rowIndex = array_search($id, $ids);
+
+        if ($rowIndex === false) {
+
+            // Cukup kembalikan ke halaman JQGrid sebelum diedit
+            $currentPage = (int) ($this->params['page'] ?? 1);
+
+            return [
+                "id"       => $id,
+                "position" => 0,
+                "page"     => $currentPage,
+                "offset"   => max(0, $currentPage - 1)
+            ];
         }
 
-        $row = $query->getRow();
-        // return $row ? (int) $row->position : 0;
+        // SABUK PENGAMAN KACAMATA KUDA (Pencarian Dua Tahap)
+        // if ($rowIndex === false) {
+
+        //     // Jika pencarian sudah tanpa filter, berarti data terhapus, aman set ke 1
+        //     if (empty($params['filters']) && empty($params['_search'])) {
+        //         return ["id" => $id, "page" => 1, "position" => 1];
+        //     }
+
+        //     // Lepaskan filter JQGrid
+        //     unset($params['filters']);
+        //     unset($params['_search']);
+        //     unset($params['searchField']);
+        //     unset($params['searchString']);
+
+        //     // Cari ulang posisinya tanpa filter
+        //     return $this->getPosition($id, $params, false);
+        // }
+
+        $rowNumber = $rowIndex + 1;
+
         return [
-            'id' => $id,
-            'position' => $row ? (int) $row->position : 0,
-            'page' => $row->position ? ceil($row->position / $limit) : 1
+            'id'       => $id,
+            'position' => $rowNumber,
+            'page'     => ceil($rowNumber / $limit),
+            'offset'   => max(0, $rowNumber - 1)
         ];
     }
     

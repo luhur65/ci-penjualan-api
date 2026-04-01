@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Libraries\ExcelMaker;
 use CodeIgniter\API\ResponseTrait;  
 use App\Models\Menu;
 use App\Services\MenuService;
@@ -166,7 +167,37 @@ class MenuController extends BaseController
      * @ClassName 
      * @Keterangan EXPORT KE EXCEL
      */
-    public function export() {}
+    public function export()
+    {
+        $data = $this->menuService->getAllMenus($this->request->getGet());
+        $excelData = [];
+
+        // (Opsional) Jika Anda mengirimkan 'offset' dari FE, nomor urut bisa disesuaikan
+        $offset = $this->request->getGet('offset') ?? 0;
+
+        foreach ($data['data'] as $index => $item) {
+
+            $excelData[] = [
+                $offset + $index + 1,      // Nomor Urut yang akurat
+                $item->menuname ?? '',
+                $item->menu_icon ?? '',
+                $item->parent_name ?? '-',
+                $item->link ?? '',
+                $item->menukode ?? '',
+                $item->modified_by ?? '',
+                $item->created_at ?? '', 
+                $item->updated_at ?? ''
+            ];
+        }
+
+        // 4. Tentukan Judul Kolom
+        $headers = ['NO', 'NAMA MENU', 'ICON', 'PARENT MENU', 'LINK', 'KODE MENU', 'MODIFIED BY', 'CREATED AT', 'UPDATED AT'];
+
+        // dd($excelData);
+
+        $excelService = new ExcelMaker();
+        return $excelService->generate('Laporan_Menu_' . date('Ymd_His'), $headers, $excelData);
+    }
 
     public function fieldLength()
     {

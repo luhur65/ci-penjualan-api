@@ -3,6 +3,7 @@
 namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
+use App\Libraries\ExcelMaker;
 use CodeIgniter\API\ResponseTrait;
 use App\Models\User as UserModel;
 use App\Services\UserService;
@@ -24,7 +25,7 @@ class UserController extends BaseController
         $this->userService = new UserService();
     }
 
-    
+
     /**
      * @ClassName 
      * @Keterangan TAMPILKAN DATA
@@ -37,10 +38,24 @@ class UserController extends BaseController
 
     public function show($id = null)
     {
-        $user = $this->userService->getUserById($id);
+        $user = $this->userService->getUserDetail($id);
         if (!$user) {
             return $this->failNotFound("User not found");
         }
+        return $this->respond($user);
+    }
+
+    public function getUserRoles($id = null)
+    {
+        $requestData = $this->request->getGet();
+        $user = $this->userService->getRoleByUserId($id, $requestData);
+        return $this->respond($user);
+    }
+
+    public function getUserAcls($id = null)
+    {
+        $requestData = $this->request->getGet();
+        $user = $this->userService->getAclByUserId($id, $requestData);
         return $this->respond($user);
     }
 
@@ -53,7 +68,7 @@ class UserController extends BaseController
     public function create()
     {
         try {
-            $authUserName = $this->authUserName();  
+            $authUserName = $this->authUserName();
             $payload = $this->request->getJSON(true); // true = associative array
 
             $data = [
@@ -78,7 +93,6 @@ class UserController extends BaseController
                 'message' => 'User successfully created',
                 'data' => $result
             ]);
-            
         } catch (\Throwable $th) {
             return $this->failServerError($th->getMessage());
         }
@@ -102,6 +116,7 @@ class UserController extends BaseController
                 'email'    => $payload['email'] ?? null,
                 'username' => $payload['username'] ?? null,
                 'role_ids' => $payload['role_ids'] ?? [],
+                'acls'     => $payload['acls'] ?? [],
                 'modified_by' => $authUserName ?? null,
                 'statusaktif' => $payload['statusaktif'] ?? null,
             ];
@@ -118,7 +133,6 @@ class UserController extends BaseController
                 'message' => 'User successfully updated',
                 'data' => $result
             ]);
-            
         } catch (\Throwable $th) {
             return $this->failServerError($th->getMessage());
         }
@@ -147,7 +161,6 @@ class UserController extends BaseController
                 'message' => 'User successfully deleted',
                 'data' => $result
             ]);
-
         } catch (\Throwable $th) {
             return $this->failServerError($th->getMessage());
         }
@@ -159,8 +172,36 @@ class UserController extends BaseController
      */
     public function export()
     {
-        $users = $this->userModel->getAll();
-        return $this->respond($users);
+        $users = $this->userService->getAllUsers($this->request->getGet());
+        $excelData = [];
+
+        // (Opsional) Jika Anda mengirimkan 'offset' dari FE, nomor urut bisa disesuaikan
+        $offset = $this->request->getGet('offset') ?? 0;
+
+        foreach ($users['data'] as $index => $user) {
+
+            $statusData = json_decode($user->statusaktif, true);
+            $statusMemo = $statusData['MEMO'] ?? '';
+
+            $excelData[] = [
+                $offset + $index + 1,      // Nomor Urut yang akurat
+                $user->fullname ?? '',
+                $user->email ?? '',
+                $user->username ?? '',
+                $statusMemo,
+                $user->modifiedby ?? '',
+                $user->created_at ?? '',
+                $user->updated_at ?? ''
+            ];
+        }
+
+        // 4. Tentukan Judul Kolom
+        $headers = ['NO', 'NAMA LENGKAP', 'EMAIL', 'USERNAME', 'STATUS AKTIF', 'MODIFIED BY', 'CREATED AT', 'UPDATED AT'];
+
+        // dd($excelData);
+
+        $excelService = new ExcelMaker();
+        return $excelService->generate('Laporan_User_' . date('Ymd_His'), $headers, $excelData);
     }
 
     /**
@@ -176,5 +217,4 @@ class UserController extends BaseController
     {
         return $this->respond($this->userModel->getFieldLengths());
     }
-
 }

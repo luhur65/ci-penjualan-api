@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\UserRole;
+use App\Models\UserAcl;
 use App\Services\ParameterService;
 use Config\Database;
 
@@ -15,6 +16,7 @@ class UserService
     protected $userModel;
     protected $parameterService;
     protected $userRoleModel;
+    protected $userAclModel;
     protected $db;
     protected $exceptAuth = [
         'class'  => [],
@@ -26,6 +28,7 @@ class UserService
         $this->userModel = new User();
         $this->parameterService = new ParameterService();
         $this->userRoleModel = new UserRole();
+        $this->userAclModel = new UserAcl();
         $this->db = Database::connect();
     }
 
@@ -43,6 +46,29 @@ class UserService
     }
 
     /**
+     * Retrieves a user detail by ID.
+     *
+     * @param int|string $id User ID to retrieve.
+     * @return array on success.
+     */
+    public function getUserDetail($id, array $params = []): array
+    {
+        $user = $this->userModel->findOne($id);
+        if (!$user) {
+            return [];
+        }
+        
+        $roles = $this->getRoleByUserId($id, $params);
+        $acls = $this->getAclByUserId($id, $params);
+        
+        return [
+            'data'  => $user,
+            'roles' => $roles['data'],
+            'acls'  => $acls['data']
+        ];
+    }
+
+    /**
      * Retrieves a user by ID.
      *
      * @param int|string $id User ID to retrieve.
@@ -51,6 +77,28 @@ class UserService
     public function getUserById($id)
     {
         return $this->userModel->findOne($id);
+    }
+
+    /**
+     * Retrieves a user role by user ID.
+     *
+     * @param int|string $id User ID to retrieve.
+     * @return array on success.
+     */
+    public function getRoleByUserId($id, array $params)
+    {
+        return $this->userRoleModel->setRequestParameters($params)->getRoleByUserId($id);
+    }
+
+    /**
+     * Retrieves a user ACL by user ID.
+     *
+     * @param int|string $id User ID to retrieve.
+     * @return array on success.
+     */
+    public function getAclByUserId($id, array $params)
+    {
+        return $this->userAclModel->setRequestParameters($params)->getAclByUserId($id);
     }
 
     /**
@@ -95,7 +143,9 @@ class UserService
     public function update(array $data, array $params): array
     {
         $roleIds = $data['role_ids'] ?? [];
+        $aclIds = $data['acls'] ?? [];
         unset($data['role_ids']);
+        unset($data['acls']);
 
         // Mulai pelindung transaksi
         $this->userModel->db->transBegin();
@@ -109,6 +159,7 @@ class UserService
                 throw new \Exception("Error updating user.");
             }
 
+            // \dd($params);
             $position = $this->userModel->getPosition($data['id'], $params);
 
             $this->userRoleModel->where('user_id', $data['id'])->delete();
@@ -117,6 +168,16 @@ class UserService
                 $this->userRoleModel->insert([
                     'user_id' => $data['id'],
                     'role_id' => $roleId,
+                    'modified_by' => $data['modified_by'] ?? null,
+                ]);
+            }
+
+            $this->userAclModel->where('user_id', $data['id'])->delete();
+
+            foreach ($aclIds as $acoId) {
+                $this->userAclModel->insert([
+                    'user_id' => $data['id'],
+                    'aco_id' => $acoId,
                     'modified_by' => $data['modified_by'] ?? null,
                 ]);
             }
@@ -145,17 +206,19 @@ class UserService
         $this->userModel->db->transBegin();
 
         try {
+            // 1. Cari tetangga DULU sebelum delete
+            $position = $this->userModel->getPosition($id, $params, true);
+
+            // 2. Baru delete user
             if (!$this->userModel->delete($id)) {
                 throw new \Exception("Error deleting user.");
             }
 
-            $position = $this->userModel->getPosition($id, $params, true);
-
+            // 3. Hapus roles
             $this->userRoleModel->where('user_id', $id)->delete();
 
             $this->userModel->db->transCommit();
             return $position;
-
         } catch (\Throwable $th) {
             $this->userModel->db->transRollback();
             log_message('error', $th->getMessage());
