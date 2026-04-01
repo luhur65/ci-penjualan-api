@@ -7,6 +7,8 @@ use App\Controllers\Api\MenuController;
 use App\Controllers\Api\RoleController;
 use App\Controllers\Api\AcosController;
 use App\Controllers\Api\ParameterController;
+use App\Controllers\Api\PenjualanController;
+use App\Controllers\Api\GridPreferencesController;
 
 /**
  * @var RouteCollection $routes
@@ -33,6 +35,9 @@ $routes->group("api", ['filter' => ['jwtFilter']], function ($routes) {
     $routes->get('parameter/lookup', [ParameterController::class, 'lookup']);
     $routes->get('users/(:num)/roles', [UserController::class, 'getUserRoles']);
     $routes->get('users/(:num)/acls', [UserController::class, 'getUserAcls']);
+    $routes->get('grid-preferences', [GridPreferencesController::class, 'getGridPreferences']);
+    $routes->post('grid-preferences', [GridPreferencesController::class, 'saveGridPreferences']);
+    $routes->delete('grid-preferences/(:segment)', [GridPreferencesController::class, 'deleteGridPreferences/$1']);
 });
 
 $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($routes) {
@@ -60,5 +65,9 @@ $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($route
     // parameter routes
     $routes->get('parameter/fieldlength', [ParameterController::class, 'fieldLength']);
     $routes->resource('parameters', ['namespace' => '', 'controller' => ParameterController::class]);
+    
+    // penjualan routes
+    $routes->get('penjualan/fieldlength', [PenjualanController::class, 'fieldLength']);
+    $routes->resource('penjualan', ['namespace' => '', 'controller' => PenjualanController::class]);
 
 });

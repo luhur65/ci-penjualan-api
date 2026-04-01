@@ -25,7 +25,7 @@ class UserController extends BaseController
         $this->userService = new UserService();
     }
 
-    
+
     /**
      * @ClassName 
      * @Keterangan TAMPILKAN DATA
@@ -38,7 +38,7 @@ class UserController extends BaseController
 
     public function show($id = null)
     {
-        $user = $this->userService->getUserById($id);
+        $user = $this->userService->getUserDetail($id);
         if (!$user) {
             return $this->failNotFound("User not found");
         }
@@ -51,7 +51,7 @@ class UserController extends BaseController
         $user = $this->userService->getRoleByUserId($id, $requestData);
         return $this->respond($user);
     }
-    
+
     public function getUserAcls($id = null)
     {
         $requestData = $this->request->getGet();
@@ -68,7 +68,7 @@ class UserController extends BaseController
     public function create()
     {
         try {
-            $authUserName = $this->authUserName();  
+            $authUserName = $this->authUserName();
             $payload = $this->request->getJSON(true); // true = associative array
 
             $data = [
@@ -93,7 +93,6 @@ class UserController extends BaseController
                 'message' => 'User successfully created',
                 'data' => $result
             ]);
-            
         } catch (\Throwable $th) {
             return $this->failServerError($th->getMessage());
         }
@@ -117,6 +116,7 @@ class UserController extends BaseController
                 'email'    => $payload['email'] ?? null,
                 'username' => $payload['username'] ?? null,
                 'role_ids' => $payload['role_ids'] ?? [],
+                'acls'     => $payload['acls'] ?? [],
                 'modified_by' => $authUserName ?? null,
                 'statusaktif' => $payload['statusaktif'] ?? null,
             ];
@@ -133,7 +133,6 @@ class UserController extends BaseController
                 'message' => 'User successfully updated',
                 'data' => $result
             ]);
-            
         } catch (\Throwable $th) {
             return $this->failServerError($th->getMessage());
         }
@@ -162,7 +161,6 @@ class UserController extends BaseController
                 'message' => 'User successfully deleted',
                 'data' => $result
             ]);
-
         } catch (\Throwable $th) {
             return $this->failServerError($th->getMessage());
         }
@@ -190,7 +188,7 @@ class UserController extends BaseController
                 $user->fullname ?? '',
                 $user->email ?? '',
                 $user->username ?? '',
-                $statusMemo,               
+                $statusMemo,
                 $user->modifiedby ?? '',
                 $user->created_at ?? '',
                 $user->updated_at ?? ''
@@ -219,5 +217,4 @@ class UserController extends BaseController
     {
         return $this->respond($this->userModel->getFieldLengths());
     }
-
 }

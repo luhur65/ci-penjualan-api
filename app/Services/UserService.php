@@ -46,6 +46,29 @@ class UserService
     }
 
     /**
+     * Retrieves a user detail by ID.
+     *
+     * @param int|string $id User ID to retrieve.
+     * @return array on success.
+     */
+    public function getUserDetail($id, array $params = []): array
+    {
+        $user = $this->userModel->findOne($id);
+        if (!$user) {
+            return [];
+        }
+        
+        $roles = $this->getRoleByUserId($id, $params);
+        $acls = $this->getAclByUserId($id, $params);
+        
+        return [
+            'data'  => $user,
+            'roles' => $roles['data'],
+            'acls'  => $acls['data']
+        ];
+    }
+
+    /**
      * Retrieves a user by ID.
      *
      * @param int|string $id User ID to retrieve.
@@ -56,11 +79,23 @@ class UserService
         return $this->userModel->findOne($id);
     }
 
+    /**
+     * Retrieves a user role by user ID.
+     *
+     * @param int|string $id User ID to retrieve.
+     * @return array on success.
+     */
     public function getRoleByUserId($id, array $params)
     {
         return $this->userRoleModel->setRequestParameters($params)->getRoleByUserId($id);
     }
 
+    /**
+     * Retrieves a user ACL by user ID.
+     *
+     * @param int|string $id User ID to retrieve.
+     * @return array on success.
+     */
     public function getAclByUserId($id, array $params)
     {
         return $this->userAclModel->setRequestParameters($params)->getAclByUserId($id);
@@ -108,7 +143,9 @@ class UserService
     public function update(array $data, array $params): array
     {
         $roleIds = $data['role_ids'] ?? [];
+        $aclIds = $data['acls'] ?? [];
         unset($data['role_ids']);
+        unset($data['acls']);
 
         // Mulai pelindung transaksi
         $this->userModel->db->transBegin();
@@ -131,6 +168,16 @@ class UserService
                 $this->userRoleModel->insert([
                     'user_id' => $data['id'],
                     'role_id' => $roleId,
+                    'modified_by' => $data['modified_by'] ?? null,
+                ]);
+            }
+
+            $this->userAclModel->where('user_id', $data['id'])->delete();
+
+            foreach ($aclIds as $acoId) {
+                $this->userAclModel->insert([
+                    'user_id' => $data['id'],
+                    'aco_id' => $acoId,
                     'modified_by' => $data['modified_by'] ?? null,
                 ]);
             }

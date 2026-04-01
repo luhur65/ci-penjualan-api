@@ -13,7 +13,7 @@ class UserAcl extends CustomModel
     protected $protectFields    = true;
     protected $allowedFields    = [
         'user_id',
-        'acl_id',
+        'aco_id',
         'modified_by',
     ];
 
@@ -22,9 +22,9 @@ class UserAcl extends CustomModel
         'method' => 'acos.method',
         'nama' => 'acos.nama',
         'keterangan' => 'acos.keterangan',
-        'modifiedby' => 'useracls.modified_by',
-        'created_at' => 'useracls.created_at',
-        'updated_at' => 'useracls.updated_at'
+        'modifiedby' => 'useracl.modified_by',
+        'created_at' => 'useracl.created_at',
+        'updated_at' => 'useracl.updated_at'
     ];
 
     protected $searchableFields = [
