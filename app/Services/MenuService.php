@@ -111,7 +111,7 @@ class MenuService
         'menu_seq'    => (int) $data['menu_seq'],
         'menu_parent' => (int) $data['menu_parent'] ?? 0,
         'menu_icon'   => $data['menu_icon'],
-        'link'       => '',
+        'link'       => $data['link'] ?? '',
         'aco_id'     => (int) $menuAcoId,
         'menukode'   => $this->generateMenuKode($data['menu_parent'], $data['menuname']),
         'controller' => $data['controller'],
@@ -265,6 +265,7 @@ class MenuService
         'menu_parent' => (int) ($data['menu_parent'] ?? $menu['menu_parent']),
         'menu_icon'   => strtolower($data['menu_icon'] ?? $menu['menu_icon']),
         'aco_id'      => (int) $menuAcoId,
+        'link'        => $data['link'] ?? $menu['link'],
         'controller'  => $controller, // Pastikan nama controller tetap terjaga
         'modified_by' => $modifiedBy,
       ];

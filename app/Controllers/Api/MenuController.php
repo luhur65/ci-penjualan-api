@@ -60,7 +60,7 @@ class MenuController extends BaseController
             'menu_seq'      => $payload['menu_seq'] ?? 0,
             'menu_icon'     => $payload['menu_icon'] ?? '',
             'menu_parent'   => $payload['menu_parent'] ?? 0,
-            'link'          => $payload['link'] ?? '',
+            'link'          => $payload['menu_exe'] ?? '',
             'controller'    => $payload['controller'] ?? '',
             'modified_by'   => $this->authUserName() ?? null,
         ];
@@ -104,7 +104,7 @@ class MenuController extends BaseController
             'menu_seq'      => $payload['menu_seq'] ?? 0,
             'menu_icon'     => $payload['menu_icon'] ?? '',
             'menu_parent'   => $payload['menu_parent'] ?? 0,
-            'link'          => $payload['link'] ?? '',
+            'link'          => $payload['menu_exe'] ?? '',
             'controller'    => $payload['controller'] ?? '',
             'modified_by'   => $this->authUserName() ?? null,
         ];

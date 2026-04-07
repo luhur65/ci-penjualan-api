@@ -111,12 +111,18 @@ class CustomModel extends Model
 
     public function sort(&$query)
     {
-        $field = $this->params['sidx'];
-        $dir   = $this->params['sord'];
+        $field = $this->params['sidx'] ?? $this->primaryKey;
+        $dir   = $this->params['sord'] ?? $this->sortDirection;
 
-        // Hanya sort field yang diperbolehkan
-        if (in_array($field, $this->searchableFields)) {
-            $query->orderBy($this->mapField($field), $dir);
+        if (in_array($field, $this->searchableFields) || $field === $this->primaryKey) {
+            $dbField = $this->mapField($field);
+            $query->orderBy($dbField, $dir);
+        } else {
+            $query->orderBy($this->table . '.' . $this->primaryKey, $this->sortDirection);
+        }
+
+        if ($field !== $this->primaryKey) {
+            $query->orderBy($this->table . '.' . $this->primaryKey, $this->sortDirection);
         }
 
         return $query;
@@ -172,170 +178,6 @@ class CustomModel extends Model
 
         return $this->lengthCache[$this->table] = $lengths;
     }
-
-
-    /**
-     * Mencari posisi baris dan halaman untuk JQGrid tanpa Temporary Table
-     */
-    // public function getPosition(int $id, array $params = [], bool $isDeleting = false)
-    // {
-    //     $this->params = $params;
-
-    //     // 1. Ambil parameter pengurutan dari JQGrid    
-    //     $page = (int) ($this->params['page'] ?? 1);
-    //     $limit = (int) ($this->params['limit'] ?? 10);
-    //     $sidx = $this->params['sortIndex'] ?? $this->primaryKey;
-    //     $sord = strtoupper($this->params['sortOrder'] ?? $this->sortDirection);
-
-    //     if (!in_array($sidx, $this->searchableFields)) {
-    //         $sidx = $this->primaryKey;
-    //     }
-
-    //     if (!in_array($sord, ['ASC', 'DESC'])) {
-    //         $sord = $this->sortDirection;
-    //     }
-
-    //     $builder = $this->builder();
-
-    //     // 2. KUNCI PERFORMA: Gunakan fungsi bawaan ROW_NUMBER() OVER()
-    //     $builder->select("{$this->table}.{$this->primaryKey}, ROW_NUMBER() OVER (ORDER BY {$sidx} {$sord}, {$this->table}.{$this->primaryKey} ASC) AS position", false);
-
-    //     // 3. Terapkan filter pencarian aktif (jika ada)
-    //     $this->filter($builder);
-
-    //     // 4. Jika mode hapus → hitung posisi tanpa query ke DB
-    //     // if ($isDeleting) {
-
-    //     //     $indexRow = (int) ($this->params['indexRow'] ?? 1);
-
-    //     //     $sqlBase = $builder->getCompiledSelect();
-
-    //     //     // 🔥 ambil row terdekat dari posisi sekarang
-    //     //     $sql = "
-    //     //         SELECT {$this->primaryKey}, position 
-    //     //         FROM ({$sqlBase}) AS ordered_query
-    //     //         WHERE position = ?
-    //     //         ORDER BY position ASC
-    //     //         LIMIT 1
-    //     //     ";
-
-    //     //     $query = $this->db->query($sql, [$indexRow]);
-
-    //     //     if ($query === false) {
-    //     //         $error = $this->db->error();
-    //     //         throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sql);
-    //     //     }
-
-    //     //     $row = $query->getRow();
-
-    //     //     // 🔥 kalau tidak ada (misalnya delete last row)
-    //     //     if (!$row) {
-    //     //         $sqlFallback = "
-    //     //             SELECT {$this->primaryKey}, position 
-    //     //             FROM ({$sqlBase}) AS ordered_query
-    //     //             ORDER BY position DESC
-    //     //             LIMIT 1
-    //     //         ";
-
-    //     //         $queryFallback = $this->db->query($sqlFallback);
-
-    //     //         if ($queryFallback === false) {
-    //     //             $error = $this->db->error();
-    //     //             throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sqlFallback);
-    //     //         }
-
-    //     //         $row = $queryFallback->getRow();
-    //     //     }
-
-    //     //     return [
-    //     //         'id' => $row->id ?? null,
-    //     //         'position' => $row->position ?? 0,
-    //     //         'page' => $row->position ? ceil($row->position / $limit) : 1
-    //     //     ];
-    //     // }
-
-    //     // 4. Jika mode hapus → hitung posisi tanpa query ke DB ( IndexRow nya local)
-    //     if ($isDeleting) {
-
-    //         // [KUNCI PERBAIKAN]: Tangkap indeks lokal (0-9) dari Frontend
-    //         $localIndex = (int) ($this->params['indexRow'] ?? 0);
-
-    //         // Hitung posisi GLOBAL menggunakan rumus matematika Halaman x Limit
-    //         $globalPosition = (($page - 1) * $limit) + $localIndex + 1;
-
-    //         $sqlBase = $builder->getCompiledSelect();
-
-    //         // 🔥 ambil row terdekat berdasarkan posisi GLOBAL
-    //         $sql = "
-    //             SELECT {$this->primaryKey}, position 
-    //             FROM ({$sqlBase}) AS ordered_query
-    //             WHERE position = ?
-    //             ORDER BY position ASC
-    //             LIMIT 1
-    //         ";
-
-    //         // Masukkan variabel $globalPosition, bukan lagi $indexRow mentah
-    //         $query = $this->db->query($sql, [$globalPosition]);
-
-    //         if ($query === false) {
-    //             $error = $this->db->error();
-    //             throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sql);
-    //         }
-
-    //         $row = $query->getRow();
-
-    //         // 🔥 kalau tidak ada (misalnya delete last row di halaman terakhir)
-    //         if (!$row) {
-    //             $sqlFallback = "
-    //                 SELECT {$this->primaryKey}, position 
-    //                 FROM ({$sqlBase}) AS ordered_query
-    //                 ORDER BY position DESC
-    //                 LIMIT 1
-    //             ";
-
-    //             $queryFallback = $this->db->query($sqlFallback);
-
-    //             if ($queryFallback === false) {
-    //                 $error = $this->db->error();
-    //                 throw new \Exception("DB Error: " . $error['message'] . " | SQL: " . $sqlFallback);
-    //             }
-
-    //             $row = $queryFallback->getRow();
-    //         }
-
-    //         return [
-    //             'id' => $row->id ?? null,
-    //             'position' => $row->position ?? 0,
-    //             'page' => $row->position ? ceil($row->position / $limit) : 1
-    //         ];
-    //     }
-
-    //     // 5. Ekstrak kueri builder menjadi string SQL mentah (Hanya jika bukan mode delete)
-    //     $sqlBase = $builder->getCompiledSelect();
-
-    //     // 6. [KUNCI PERBAIKAN]: Gunakan alias 'ordered_query' pada klausa WHERE
-    //     $sql = "SELECT position FROM ({$sqlBase}) AS ordered_query WHERE ordered_query.{$this->primaryKey} = ?";
-
-    //     \dd($sql);
-
-    //     // 7. Eksekusi kueri akhir secara langsung
-    //     $query = $this->db->query($sql, [$id]);
-
-    //     // \dd($query->getResult());
-
-    //     if ($query === false) {
-    //         $error = $this->db->error();
-    //         throw new \Exception("Database Error: " . $error['message'] . " | SQL: " . $sql);
-    //     }
-
-    //     $row = $query->getRow();
-    //     // return $row ? (int) $row->position : 0;
-    //     return [
-    //         'id' => $id,
-    //         'position' => $row ? (int) $row->position : -1,
-    //         'page' => $row->position ? ceil($row->position / $limit) : 1
-    //     ];
-    // }
 
 
     /**
@@ -440,24 +282,6 @@ class CustomModel extends Model
                 "offset"   => max(0, $currentPage - 1)
             ];
         }
-
-        // SABUK PENGAMAN KACAMATA KUDA (Pencarian Dua Tahap)
-        // if ($rowIndex === false) {
-
-        //     // Jika pencarian sudah tanpa filter, berarti data terhapus, aman set ke 1
-        //     if (empty($params['filters']) && empty($params['_search'])) {
-        //         return ["id" => $id, "page" => 1, "position" => 1];
-        //     }
-
-        //     // Lepaskan filter JQGrid
-        //     unset($params['filters']);
-        //     unset($params['_search']);
-        //     unset($params['searchField']);
-        //     unset($params['searchString']);
-
-        //     // Cari ulang posisinya tanpa filter
-        //     return $this->getPosition($id, $params, false);
-        // }
 
         $rowNumber = $rowIndex + 1;
 
