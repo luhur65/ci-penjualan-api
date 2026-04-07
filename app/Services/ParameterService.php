@@ -22,7 +22,7 @@ class ParameterService
    */
   public function getAllParameters($requestData)
   {
-    $parameters = $this->parameterModel->setRequestParameters($requestData)->get();
+    $parameters = $this->parameterModel->setRequestParameters($requestData)->getAll();
 
     return [
       'data' => $parameters['data'],
