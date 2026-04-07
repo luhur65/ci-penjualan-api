@@ -61,9 +61,11 @@ class RoleController extends BaseController
         ];
 
         try {
-            if (!$this->roleModel->validate($data)) {
+            $validation = \Config\Services::validation();
+
+            if (!$validation->run($data, 'roleCreate')) {
                 return $this->respond([
-                    'errors' => $this->roleModel->errors()
+                    'errors' => $validation->getErrors()
                 ], 422);
             }
 
@@ -100,9 +102,11 @@ class RoleController extends BaseController
         ];
 
         try {
-            if (!$this->roleModel->validate($data)) {
+            $validation = \Config\Services::validation();
+
+            if (!$validation->run($data, 'roleUpdate')) {
                 return $this->respond([
-                    'errors' => $this->roleModel->errors()
+                    'errors' => $validation->getErrors()
                 ], 422);
             }
 

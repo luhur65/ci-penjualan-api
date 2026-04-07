@@ -63,4 +63,104 @@ class Validation extends BaseConfig
         'kodeerror'  => 'required',
         'keterangan' => 'required'
     ];
+
+    public array $userCreate = [
+        'fullname' => 'required|max_length[254]|min_length[3]|alpha_space',
+        'email'    => 'required|max_length[254]|valid_email|is_unique[users.email]',
+        'username' => 'required|max_length[30]|alpha_numeric_space|min_length[3]|is_unique[users.username]',
+        'statusaktif' => 'permit_empty|is_natural_no_zero',
+    ];
+
+    public array $userCreate_errors = [
+        'fullname' => [
+            'required' => 'Fullname is required',
+            'alpha_space' => 'Fullname only contains alphabet and space'
+        ],
+        'email' => [
+            'required' => 'Email is required',
+            'valid_email' => 'Email is invalid',
+            'is_unique' => 'Sorry. That email has already been taken. Please choose another.',
+        ],
+        'username' => [
+            'required' => 'Username is required',
+            'is_unique' => 'Sorry. That username has already been taken. Please choose another.',
+        ]
+    ];
+
+    public array $userUpdate = [
+        'id'       => 'required|is_natural_no_zero',
+        'fullname' => 'required|max_length[254]|min_length[3]|alpha_space',
+        'email'    => 'required|max_length[254]|valid_email|is_unique[users.email,id,{id}]',
+        'username' => 'required|max_length[30]|alpha_numeric_space|min_length[3]|is_unique[users.username,id,{id}]',
+        'statusaktif' => 'permit_empty|is_natural_no_zero',
+    ];
+
+    public array $userUpdate_errors = [
+        'id' => [
+            'is_natural_no_zero' => 'ID must be a positive integer',
+        ],
+        'fullname' => [
+            'required' => 'Fullname is required',
+            'alpha_space' => 'Fullname only contains alphabet and space'
+        ],
+        'email' => [
+            'required' => 'Email is required',
+            'valid_email' => 'Email is invalid',
+            'is_unique' => 'Sorry. That email has already been taken. Please choose another.',
+        ],
+        'username' => [
+            'required' => 'Username is required',
+            'is_unique' => 'Sorry. That username has already been taken. Please choose another.',
+        ]
+    ];
+
+    public array $roleCreate = [
+        'rolename' => 'required',
+    ];
+
+    public array $roleCreate_errors = [
+        'rolename' => [
+            'required' => 'Role name is required',
+        ],
+    ];
+
+    public array $roleUpdate = [
+        'id'       => 'required|is_natural_no_zero',
+        'rolename' => 'required',
+    ];
+
+    public array $roleUpdate_errors = [
+        'rolename' => [
+            'required' => 'Role name is required',
+        ],
+    ];
+
+    public array $menuCreate = [
+        'menuname'   => 'required|max_length[255]',
+        'controller' => 'permit_empty|max_length[100]',
+    ];
+
+    public array $menuCreate_errors = [
+        'menuname' => [
+            'required' => 'Nama menu wajib diisi.'
+        ],
+        'controller' => [
+            'required' => 'Controller wajib diisi.'
+        ],
+    ];
+
+    public array $menuUpdate = [
+        'id'         => 'required|is_natural_no_zero',
+        'menuname'   => 'required|max_length[255]',
+        'controller' => 'permit_empty|max_length[100]',
+    ];
+
+    public array $menuUpdate_errors = [
+        'menuname' => [
+            'required' => 'Nama menu wajib diisi.'
+        ],
+        'controller' => [
+            'required' => 'Controller wajib diisi.'
+        ],
+    ];
 }
