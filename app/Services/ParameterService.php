@@ -116,47 +116,87 @@ class ParameterService
    * Stores a new parameter.
    *
    * @param array $data
-   * @return bool
+   * @param array $params
+   * @return array
    * @throws \Exception
    */
-  public function create(array $data)
+  public function create(array $data, array $params = []): array
   {
-    if (!$this->parameterModel->insert($data)) {
-      throw new \Exception("Error storing parameter.");
-    }
+    $this->parameterModel->db->transBegin();
 
-    return true;
+    try {
+      if (!$this->parameterModel->insert($data)) {
+        throw new \Exception("Error storing parameter.");
+      }
+
+      $newId = $this->parameterModel->getInsertID();
+      $position = $this->parameterModel->getPosition($newId, $params);
+
+      $this->parameterModel->db->transCommit();
+
+      return $position;
+    } catch (\Throwable $th) {
+      $this->parameterModel->db->transRollback();
+      log_message('error', $th->getMessage());
+      throw $th;
+    }
   }
 
   /**
    * Updates an existing parameter.
    *
    * @param array $data
-   * @return bool
+   * @param array $params
+   * @return array
    * @throws \Exception
    */
-  public function update(array $data)
+  public function update(array $data, array $params = []): array
   {
-    if (!$this->parameterModel->update($data['id'], $data)) {
-      throw new \Exception("Error updating parameter.");
-    }
+    $this->parameterModel->db->transBegin();
 
-    return true;
+    try {
+      if (!$this->parameterModel->update($data['id'], $data)) {
+        throw new \Exception("Error updating parameter.");
+      }
+
+      $position = $this->parameterModel->getPosition($data['id'], $params);
+
+      $this->parameterModel->db->transCommit();
+
+      return $position;
+    } catch (\Throwable $th) {
+      $this->parameterModel->db->transRollback();
+      log_message('error', $th->getMessage());
+      throw $th;
+    }
   }
 
   /**
-   * Deletes an parameter by ID.
+   * Deletes a parameter by ID.
    *
    * @param int|string $id
-   * @return bool
+   * @param array $params
+   * @return array
    * @throws \Exception
    */
-  public function delete($id)
+  public function delete($id, array $params = []): array
   {
-    if (!$this->parameterModel->delete($id)) {
-      throw new \Exception("Error deleting parameter.");
-    }
+    $this->parameterModel->db->transBegin();
 
-    return true;
+    try {
+      $position = $this->parameterModel->getPosition($id, $params, true);
+
+      if (!$this->parameterModel->delete($id)) {
+        throw new \Exception("Error deleting parameter.");
+      }
+
+      $this->parameterModel->db->transCommit();
+
+      return $position;
+    } catch (\Throwable $th) {
+      $this->parameterModel->db->transRollback();
+      log_message('error', $th->getMessage());
+      throw $th;
+    }
   }
 }
