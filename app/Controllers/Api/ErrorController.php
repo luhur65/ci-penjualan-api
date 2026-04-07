@@ -58,18 +58,14 @@ class ErrorController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
-            $rules = [
-                'kodeerror'  => 'required',
-                'keterangan' => 'required'
-            ];
 
-            if (!$validation->setRules($rules)->run($data)) {
+            if (!$validation->run($data, 'errorCreate')) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
             }
 
-            $result = $this->errorService->create($data, $this->request->getGetPost());
+            $result = $this->errorService->create($data, $payload);
 
             return $this->respondCreated([
                 'message' => 'Error successfully created',
@@ -100,19 +96,14 @@ class ErrorController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
-            $rules = [
-                'id'         => 'required',
-                'kodeerror'  => 'required',
-                'keterangan' => 'required'
-            ];
 
-            if (!$validation->setRules($rules)->run($data)) {
+            if (!$validation->run($data, 'errorUpdate')) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
             }
 
-            $result = $this->errorService->update($data, $this->request->getGetPost());
+            $result = $this->errorService->update($data, $payload);
 
             return $this->respondUpdated([
                 'message' => 'Error successfully updated',
@@ -132,13 +123,14 @@ class ErrorController extends BaseController
     public function delete($id = null)
     {
         $error = $this->errorService->getErrorById($id);
+        $payload = $this->request->getJSON(true);
 
         if (!$error) {
             return $this->failNotFound("Error not found");
         }
 
         try {
-            $result = $this->errorService->delete($id, $this->request->getGetPost());
+            $result = $this->errorService->delete($id, $payload ?? []);
 
             return $this->respondDeleted([
                 'message' => 'Error successfully deleted',

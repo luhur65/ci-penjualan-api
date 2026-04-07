@@ -41,4 +41,26 @@ class Validation extends BaseConfig
     // --------------------------------------------------------------------
     // Rules
     // --------------------------------------------------------------------
+
+    public array $parameterCreate = [
+        'grp'  => 'required',
+        'text' => 'required'
+    ];
+
+    public array $parameterUpdate = [
+        'id'   => 'required',
+        'grp'  => 'required',
+        'text' => 'required'
+    ];
+
+    public array $errorCreate = [
+        'kodeerror'  => 'required',
+        'keterangan' => 'required'
+    ];
+
+    public array $errorUpdate = [
+        'id'         => 'required',
+        'kodeerror'  => 'required',
+        'keterangan' => 'required'
+    ];
 }

@@ -71,18 +71,14 @@ class ParameterController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
-            $rules = [
-                'grp' => 'required',
-                'text' => 'required'
-            ];
 
-            if (!$validation->setRules($rules)->run($data)) {
+            if (!$validation->run($data, 'parameterCreate')) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
             }
 
-            $result = $this->parameterService->create($data, $this->request->getGetPost());
+            $result = $this->parameterService->create($data, $payload);
 
             return $this->respondCreated([
                 'message' => 'Parameter successfully created',
@@ -118,19 +114,14 @@ class ParameterController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
-            $rules = [
-                'id'   => 'required',
-                'grp'  => 'required',
-                'text' => 'required'
-            ];
 
-            if (!$validation->setRules($rules)->run($data)) {
+            if (!$validation->run($data, 'parameterUpdate')) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
             }
 
-            $result = $this->parameterService->update($data, $this->request->getGetPost());
+            $result = $this->parameterService->update($data, $payload);
 
             return $this->respondUpdated([
                 'message' => 'Parameter successfully updated',
@@ -150,13 +141,14 @@ class ParameterController extends BaseController
     public function delete($id = null)
     {
         $parameter = $this->parameterService->getParameterById($id);
+        $payload = $this->request->getJSON(true);
 
         if (!$parameter) {
             return $this->failNotFound("Parameter not found");
         }
 
         try {
-            $result = $this->parameterService->delete($id, $this->request->getGetPost());
+            $result = $this->parameterService->delete($id, $payload ?? []);
 
             return $this->respondDeleted([
                 'message' => 'Parameter successfully deleted',
