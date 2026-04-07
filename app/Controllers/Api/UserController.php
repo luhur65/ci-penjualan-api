@@ -79,11 +79,12 @@ class UserController extends BaseController
                 'statusaktif' => $payload['statusaktif'] ?? null,
             ];
 
-            // Validasi manual menggunakan validate()
-            if (!$this->userModel->validate($data)) {
+            $validation = \Config\Services::validation();
+
+            if (!$validation->run($data, 'userCreate')) {
                 return $this->respond([
-                    'errors' => $this->userModel->errors()  // Menyertakan pesan error validasi
-                ], 422);  // Status code 422 for unprocessable entity
+                    'errors' => $validation->getErrors()
+                ], 422);
             }
 
             // Proses penyimpanan ke service
@@ -121,9 +122,11 @@ class UserController extends BaseController
                 'statusaktif' => $payload['statusaktif'] ?? null,
             ];
 
-            if (!$this->userModel->validate($data)) {
+            $validation = \Config\Services::validation();
+
+            if (!$validation->run($data, 'userUpdate')) {
                 return $this->respond([
-                    'errors' => $this->userModel->errors()
+                    'errors' => $validation->getErrors()
                 ], 422);
             }
 

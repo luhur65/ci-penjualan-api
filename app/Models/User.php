@@ -57,37 +57,8 @@ class User extends CustomModel
     protected $deletedField  = 'deleted_at';
 
     // Validation
-    protected $validationRules      = [
-        'id'       => 'permit_empty|is_natural_no_zero',
-        'fullname' => 'required|max_length[254]|min_length[3]|alpha_space',
-        'email'    => 'required|max_length[254]|valid_email|is_unique[users.email,id,{id}]',
-        'username' => 'required|max_length[30]|alpha_numeric_space|min_length[3]|is_unique[users.username,id,{id}]',
-        'statusaktif' => 'permit_empty|is_natural_no_zero',
-    ];
-    protected $validationMessages   = [
-        'id' => [
-            'is_natural_no_zero' => 'ID must be a positive integer',
-        ],
-        'fullname' => [
-            'required' => 'Fullname is required',
-            'alpha_space' => 'Fullname only contains alphabet and space'
-        ],
-        'email' => [
-            'required' => 'Email is required',
-            'valid_email' => 'Email is invalid',
-            'is_unique' => 'Sorry. That email has already been taken. Please choose another.',
-        ],
-        'username' => [
-            'required' => 'Username is required',
-            'is_unique' => 'Sorry. That username has already been taken. Please choose another.',
-        ],
-        'password' => [
-            'required' => 'Password is required',
-        ],
-        'statusaktif' => [
-            'is_natural_no_zero' => 'Status aktif is invalid',
-        ],
-    ];
+    protected $validationRules      = [];
+    protected $validationMessages   = [];
     protected $skipValidation       = false;
     protected $cleanValidationRules = false;
 
