@@ -170,27 +170,46 @@ class UserService
             }
             $this->userRoleModel->where('user_id', $data['id'])->delete();
 
+            // Mematikan log otomatis saat looping, dan merekap data
+            $this->userRoleModel->allowCallbacks(false);
+            $newRolesData = [];
             foreach ($roleIds as $roleId) {
-                $this->userRoleModel->insert([
+                $rolePayload = [
                     'user_id' => $data['id'],
                     'role_id' => $roleId,
                     'modified_by' => $data['modified_by'] ?? null,
-                ]);
+                ];
+                $this->userRoleModel->insert($rolePayload);
+                $newRolesData[] = $rolePayload;
             }
+            if (!empty($newRolesData)) {
+                audit_log('userroles', 'BULK_CREATE', $data['id'], null, $newRolesData);
+            }
+            $this->userRoleModel->allowCallbacks(true);
 
+            // Audit Log Bulk Delete ACL
             $oldAcls = $this->userAclModel->where('user_id', $data['id'])->findAll();
             if (!empty($oldAcls)) {
                 audit_log('useracl', 'BULK_DELETE', $data['id'], $oldAcls, null);
             }
             $this->userAclModel->where('user_id', $data['id'])->delete();
 
+            // Mematikan log otomatis saat looping ACL
+            $this->userAclModel->allowCallbacks(false);
+            $newAclsData = [];
             foreach ($aclIds as $acoId) {
-                $this->userAclModel->insert([
+                $aclPayload = [
                     'user_id' => $data['id'],
                     'aco_id' => $acoId,
                     'modified_by' => $data['modified_by'] ?? null,
-                ]);
+                ];
+                $this->userAclModel->insert($aclPayload);
+                $newAclsData[] = $aclPayload;
             }
+            if (!empty($newAclsData)) {
+                audit_log('useracl', 'BULK_CREATE', $data['id'], null, $newAclsData);
+            }
+            $this->userAclModel->allowCallbacks(true);
 
             // Komit transaksi jika semua perintah sukses
             $this->userModel->db->transCommit();
