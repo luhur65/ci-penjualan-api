@@ -71,8 +71,9 @@ class ParameterController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\ParameterCreateRequest())->rules();
 
-            if (!$validation->run($data, 'parameterCreate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
@@ -114,8 +115,9 @@ class ParameterController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\ParameterUpdateRequest())->rules();
 
-            if (!$validation->run($data, 'parameterUpdate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);

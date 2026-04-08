@@ -67,8 +67,9 @@ class MenuController extends BaseController
 
         try {
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\MenuCreateRequest())->rules();
 
-            if (!$validation->run($data, 'menuCreate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
@@ -113,8 +114,9 @@ class MenuController extends BaseController
 
         try {
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\MenuUpdateRequest())->rules();
 
-            if (!$validation->run($data, 'menuUpdate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);

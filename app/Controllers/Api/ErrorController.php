@@ -58,8 +58,9 @@ class ErrorController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\ErrorCreateRequest())->rules();
 
-            if (!$validation->run($data, 'errorCreate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
@@ -96,8 +97,9 @@ class ErrorController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\ErrorUpdateRequest())->rules();
 
-            if (!$validation->run($data, 'errorUpdate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
