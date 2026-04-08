@@ -4,7 +4,7 @@ namespace App\Validation;
 
 class RoleUpdateRequest
 {
-    public function rules(): array
+    public function rules($id = null): array
     {
         return [
             'id'       => 'required|is_natural_no_zero',

@@ -114,7 +114,7 @@ class MenuController extends BaseController
 
         try {
             $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\MenuUpdateRequest())->rules();
+            $rules = (new \App\Validation\MenuUpdateRequest())->rules($id);
 
             if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([

@@ -97,7 +97,7 @@ class ErrorController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\ErrorUpdateRequest())->rules();
+            $rules = (new \App\Validation\ErrorUpdateRequest())->rules($id);
 
             if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([

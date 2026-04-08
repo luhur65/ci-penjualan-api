@@ -124,7 +124,7 @@ class UserController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\UserUpdateRequest())->rules();
+            $rules = (new \App\Validation\UserUpdateRequest())->rules($id);
 
             if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
