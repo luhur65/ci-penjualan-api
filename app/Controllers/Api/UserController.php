@@ -80,8 +80,9 @@ class UserController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\UserCreateRequest())->rules();
 
-            if (!$validation->run($data, 'userCreate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
@@ -123,8 +124,9 @@ class UserController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\UserUpdateRequest())->rules();
 
-            if (!$validation->run($data, 'userUpdate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);

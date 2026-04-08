@@ -62,8 +62,9 @@ class RoleController extends BaseController
 
         try {
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\RoleCreateRequest())->rules();
 
-            if (!$validation->run($data, 'roleCreate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
@@ -103,8 +104,9 @@ class RoleController extends BaseController
 
         try {
             $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\RoleUpdateRequest())->rules();
 
-            if (!$validation->run($data, 'roleUpdate')) {
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
                     'errors' => $validation->getErrors()
                 ], 422);
