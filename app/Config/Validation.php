@@ -71,21 +71,7 @@ class Validation extends BaseConfig
         'statusaktif' => 'permit_empty|is_natural_no_zero',
     ];
 
-    public array $userCreate_errors = [
-        'fullname' => [
-            'required' => 'Fullname is required',
-            'alpha_space' => 'Fullname only contains alphabet and space'
-        ],
-        'email' => [
-            'required' => 'Email is required',
-            'valid_email' => 'Email is invalid',
-            'is_unique' => 'Sorry. That email has already been taken. Please choose another.',
-        ],
-        'username' => [
-            'required' => 'Username is required',
-            'is_unique' => 'Sorry. That username has already been taken. Please choose another.',
-        ]
-    ];
+
 
     public array $userUpdate = [
         'id'       => 'required|is_natural_no_zero',
@@ -95,59 +81,27 @@ class Validation extends BaseConfig
         'statusaktif' => 'permit_empty|is_natural_no_zero',
     ];
 
-    public array $userUpdate_errors = [
-        'id' => [
-            'is_natural_no_zero' => 'ID must be a positive integer',
-        ],
-        'fullname' => [
-            'required' => 'Fullname is required',
-            'alpha_space' => 'Fullname only contains alphabet and space'
-        ],
-        'email' => [
-            'required' => 'Email is required',
-            'valid_email' => 'Email is invalid',
-            'is_unique' => 'Sorry. That email has already been taken. Please choose another.',
-        ],
-        'username' => [
-            'required' => 'Username is required',
-            'is_unique' => 'Sorry. That username has already been taken. Please choose another.',
-        ]
-    ];
+
 
     public array $roleCreate = [
         'rolename' => 'required',
     ];
 
-    public array $roleCreate_errors = [
-        'rolename' => [
-            'required' => 'Role name is required',
-        ],
-    ];
+
 
     public array $roleUpdate = [
         'id'       => 'required|is_natural_no_zero',
         'rolename' => 'required',
     ];
 
-    public array $roleUpdate_errors = [
-        'rolename' => [
-            'required' => 'Role name is required',
-        ],
-    ];
+
 
     public array $menuCreate = [
         'menuname'   => 'required|max_length[255]',
         'controller' => 'permit_empty|max_length[100]',
     ];
 
-    public array $menuCreate_errors = [
-        'menuname' => [
-            'required' => 'Nama menu wajib diisi.'
-        ],
-        'controller' => [
-            'required' => 'Controller wajib diisi.'
-        ],
-    ];
+
 
     public array $menuUpdate = [
         'id'         => 'required|is_natural_no_zero',
@@ -155,12 +109,5 @@ class Validation extends BaseConfig
         'controller' => 'permit_empty|max_length[100]',
     ];
 
-    public array $menuUpdate_errors = [
-        'menuname' => [
-            'required' => 'Nama menu wajib diisi.'
-        ],
-        'controller' => [
-            'required' => 'Controller wajib diisi.'
-        ],
-    ];
+
 }
