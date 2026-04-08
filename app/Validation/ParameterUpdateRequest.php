@@ -4,7 +4,7 @@ namespace App\Validation;
 
 class ParameterUpdateRequest
 {
-    public function rules(): array
+    public function rules($id = null): array
     {
         return [
             'id'   => 'required',

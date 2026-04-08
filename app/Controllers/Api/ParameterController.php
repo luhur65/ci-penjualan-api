@@ -115,7 +115,7 @@ class ParameterController extends BaseController
             ];
 
             $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\ParameterUpdateRequest())->rules();
+            $rules = (new \App\Validation\ParameterUpdateRequest())->rules($id);
 
             if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([

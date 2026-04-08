@@ -20,6 +20,95 @@ class CustomModel extends Model
     ];
 
     /**
+     * Temporary property to store old data before update
+     */
+    protected $tempOldData = [];
+
+    // Enable callbacks for the model so events fire
+    protected $allowCallbacks = true;
+
+    public function __construct()
+    {
+        parent::__construct();
+        helper('audit');
+
+        // Dynamically append the callback methods to ensure they execute
+        // even if a child model defines its own callback properties as empty arrays.
+        if (!in_array('logAfterInsert', $this->afterInsert)) {
+            $this->afterInsert[] = 'logAfterInsert';
+        }
+        if (!in_array('logBeforeUpdate', $this->beforeUpdate)) {
+            $this->beforeUpdate[] = 'logBeforeUpdate';
+        }
+        if (!in_array('logAfterUpdate', $this->afterUpdate)) {
+            $this->afterUpdate[] = 'logAfterUpdate';
+        }
+        if (!in_array('logBeforeDelete', $this->beforeDelete)) {
+            $this->beforeDelete[] = 'logBeforeDelete';
+        }
+    }
+
+    protected function logAfterInsert(array $data)
+    {
+        if (!isset($data['id'])) {
+            return $data;
+        }
+
+        $recordId = $data['id'];
+        $newData = $data['data'] ?? [];
+
+        audit_log($this->table, 'CREATE', $recordId, null, $newData);
+
+        return $data;
+    }
+
+    protected function logBeforeUpdate(array $data)
+    {
+        // Parameter $data['id'] is an array containing the IDs being updated.
+        // E.g., ['id' => [1]]
+        if (isset($data['id']) && is_array($data['id'])) {
+            $recordId = $data['id'][0] ?? null;
+            if ($recordId) {
+                // Fetch existing data using a fresh builder to prevent wiping out model builder's state
+                $oldRecord = $this->db->table($this->table)->where($this->primaryKey, $recordId)->get()->getRowArray();
+                $this->tempOldData[$recordId] = $oldRecord;
+            }
+        }
+        return $data;
+    }
+
+    protected function logAfterUpdate(array $data)
+    {
+        if (isset($data['id']) && is_array($data['id'])) {
+            $recordId = $data['id'][0] ?? null;
+            if ($recordId) {
+                $oldData = $this->tempOldData[$recordId] ?? [];
+                $newData = $data['data'] ?? [];
+
+                // Unset to prevent memory leaks if many updates happen in a loop
+                unset($this->tempOldData[$recordId]);
+
+                audit_log($this->table, 'UPDATE', $recordId, $oldData, $newData);
+            }
+        }
+        return $data;
+    }
+
+    protected function logBeforeDelete(array $data)
+    {
+        if (isset($data['id']) && is_array($data['id'])) {
+            $recordId = $data['id'][0] ?? null;
+            if ($recordId) {
+                // Use fresh builder to prevent wiping model builder state
+                $oldRecord = $this->db->table($this->table)->where($this->primaryKey, $recordId)->get()->getRowArray();
+
+                audit_log($this->table, 'DELETE', $recordId, $oldRecord, null);
+            }
+        }
+        return $data;
+    }
+
+    /**
      * Request Parameters untuk JQGrid
      */
     public function setRequestParameters(array $requestData = [])

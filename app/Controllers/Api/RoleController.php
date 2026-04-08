@@ -104,7 +104,7 @@ class RoleController extends BaseController
 
         try {
             $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\RoleUpdateRequest())->rules();
+            $rules = (new \App\Validation\RoleUpdateRequest())->rules($id);
 
             if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
