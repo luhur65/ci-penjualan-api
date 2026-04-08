@@ -120,6 +120,10 @@ class UserService
             }
 
             $newId = $this->userModel->getInsertID();
+
+            // Manual Audit Log Create
+            helper('audit');
+            audit_log('users', 'CREATE', $newId, null, $data);
             $position = $this->userModel->getPosition($newId, $params);
 
             $this->userModel->db->transCommit();
@@ -155,9 +159,14 @@ class UserService
             $parameter = $this->parameterService->getParameterById($data['statusaktif']);
             $data['status_aktif'] = $parameter['id'] ?? 1;
 
+            helper('audit');
+            $oldData = $this->userModel->find($data['id']);
+
             if (!$this->userModel->update($data['id'], $data)) {
                 throw new \Exception("Error updating user.");
             }
+
+            audit_log('users', 'UPDATE', $data['id'], $oldData, $data);
 
             // \dd($params);
             $position = $this->userModel->getPosition($data['id'], $params);
@@ -171,8 +180,7 @@ class UserService
             $this->userRoleModel->where('user_id', $data['id'])->delete();
 
             // Mematikan log otomatis saat looping, dan merekap data
-            $this->userRoleModel->allowCallbacks(false);
-            $newRolesData = [];
+                        $newRolesData = [];
             foreach ($roleIds as $roleId) {
                 $rolePayload = [
                     'user_id' => $data['id'],
@@ -185,7 +193,6 @@ class UserService
             if (!empty($newRolesData)) {
                 audit_log('userroles', 'BULK_CREATE', $data['id'], null, $newRolesData);
             }
-            $this->userRoleModel->allowCallbacks(true);
 
             // Audit Log Bulk Delete ACL
             $oldAcls = $this->userAclModel->where('user_id', $data['id'])->findAll();
@@ -195,8 +202,7 @@ class UserService
             $this->userAclModel->where('user_id', $data['id'])->delete();
 
             // Mematikan log otomatis saat looping ACL
-            $this->userAclModel->allowCallbacks(false);
-            $newAclsData = [];
+                        $newAclsData = [];
             foreach ($aclIds as $acoId) {
                 $aclPayload = [
                     'user_id' => $data['id'],
@@ -209,7 +215,6 @@ class UserService
             if (!empty($newAclsData)) {
                 audit_log('useracl', 'BULK_CREATE', $data['id'], null, $newAclsData);
             }
-            $this->userAclModel->allowCallbacks(true);
 
             // Komit transaksi jika semua perintah sukses
             $this->userModel->db->transCommit();
@@ -238,13 +243,10 @@ class UserService
             // 1. Cari tetangga DULU sebelum delete
             $position = $this->userModel->getPosition($id, $params, true);
 
-            // 2. Baru delete user
-            if (!$this->userModel->delete($id)) {
-                throw new \Exception("Error deleting user.");
-            }
-
-            // Audit Log Bulk Delete untuk Role dan ACL sebelum didelete dari database
             helper('audit');
+            $oldData = $this->userModel->find($id);
+
+            // Audit Log Bulk Delete untuk Role dan ACL sebelum data user di-delete dari database (mencegah cascade)
             $oldRoles = $this->userRoleModel->where('user_id', $id)->findAll();
             if (!empty($oldRoles)) {
                 audit_log('userroles', 'BULK_DELETE', $id, $oldRoles, null);
@@ -254,9 +256,16 @@ class UserService
                 audit_log('useracl', 'BULK_DELETE', $id, $oldAcls, null);
             }
 
-            // 3. Hapus roles dan acls
+            // 3. Hapus roles dan acls terlebih dahulu jika manual (menghindari constraint error)
             $this->userRoleModel->where('user_id', $id)->delete();
             $this->userAclModel->where('user_id', $id)->delete();
+
+            // 2. Baru delete user parent
+            if (!$this->userModel->delete($id)) {
+                throw new \Exception("Error deleting user.");
+            }
+
+            audit_log('users', 'DELETE', $id, $oldData, null);
 
             $this->userModel->db->transCommit();
             return $position;

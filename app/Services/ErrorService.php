@@ -55,6 +55,8 @@ class ErrorService
             }
 
             $newId = $this->errorModel->getInsertID();
+            helper('audit');
+            audit_log('errors', 'CREATE', $newId, null, $data);
             $position = $this->errorModel->getPosition($newId, $params);
 
             $this->errorModel->db->transCommit();
@@ -80,9 +82,14 @@ class ErrorService
         $this->errorModel->db->transBegin();
 
         try {
+            helper('audit');
+            $oldData = $this->errorModel->find($data['id']);
+
             if (!$this->errorModel->update($data['id'], $data)) {
                 throw new \Exception("Error updating error.");
             }
+
+            audit_log('errors', 'UPDATE', $data['id'], $oldData, $data);
 
             $position = $this->errorModel->getPosition($data['id'], $params);
 
@@ -111,9 +118,14 @@ class ErrorService
         try {
             $position = $this->errorModel->getPosition($id, $params, true);
 
+            helper('audit');
+            $oldData = $this->errorModel->find($id);
+
             if (!$this->errorModel->delete($id)) {
                 throw new \Exception("Error deleting error.");
             }
+
+            audit_log('errors', 'DELETE', $id, $oldData, null);
 
             $this->errorModel->db->transCommit();
 

@@ -130,6 +130,8 @@ class ParameterService
       }
 
       $newId = $this->parameterModel->getInsertID();
+      helper('audit');
+      audit_log('parameters', 'CREATE', $newId, null, $data);
       $position = $this->parameterModel->getPosition($newId, $params);
 
       $this->parameterModel->db->transCommit();
@@ -155,9 +157,14 @@ class ParameterService
     $this->parameterModel->db->transBegin();
 
     try {
+      helper('audit');
+      $oldData = $this->parameterModel->find($data['id']);
+
       if (!$this->parameterModel->update($data['id'], $data)) {
         throw new \Exception("Error updating parameter.");
       }
+
+      audit_log('parameters', 'UPDATE', $data['id'], $oldData, $data);
 
       $position = $this->parameterModel->getPosition($data['id'], $params);
 
@@ -186,9 +193,14 @@ class ParameterService
     try {
       $position = $this->parameterModel->getPosition($id, $params, true);
 
+      helper('audit');
+      $oldData = $this->parameterModel->find($id);
+
       if (!$this->parameterModel->delete($id)) {
         throw new \Exception("Error deleting parameter.");
       }
+
+      audit_log('parameters', 'DELETE', $id, $oldData, null);
 
       $this->parameterModel->db->transCommit();
 

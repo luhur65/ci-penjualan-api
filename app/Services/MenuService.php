@@ -123,6 +123,8 @@ class MenuService
       }
 
       $newId = $this->menuModel->getInsertID();
+      helper('audit');
+      audit_log('menus', 'CREATE', $newId, null, $saveData);
       $position = $this->menuModel->getPosition($newId, $params);
       
       $this->db->transCommit();
@@ -270,9 +272,14 @@ class MenuService
         'modified_by' => $modifiedBy,
       ];
 
+      helper('audit');
+      $oldData = $this->menuModel->find($data['id']);
+
       if (!$this->menuModel->update($data['id'], $updateData)) {
         throw new \Exception("Error updating menu: " . json_encode($this->menuModel->errors()));
       }
+
+      audit_log('menus', 'UPDATE', $data['id'], $oldData, $updateData);
 
       $position = $this->menuModel->getPosition($data['id'], $params);
 
@@ -310,7 +317,12 @@ class MenuService
         $this->acosService->delete($acos['id']);
       }
   
+      helper('audit');
+      $oldData = $this->menuModel->find($id);
+
       $this->menuModel->delete($id);
+
+      audit_log('menus', 'DELETE', $id, $oldData, null);
   
       $position = $this->menuModel->getPosition($id, $params, true);
       $this->db->transCommit();

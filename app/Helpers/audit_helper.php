@@ -14,9 +14,11 @@ if (!function_exists('filter_sensitive_data')) {
 
         $sensitiveFields = ['password', 'token', 'secret', 'password_hash', 'api_key'];
 
-        foreach ($sensitiveFields as $field) {
-            if (array_key_exists($field, $data)) {
-                unset($data[$field]);
+        foreach ($data as $key => &$value) {
+            if (in_array($key, $sensitiveFields, true)) {
+                unset($data[$key]);
+            } elseif (is_array($value)) {
+                $value = filter_sensitive_data($value);
             }
         }
 

@@ -75,6 +75,8 @@ class RoleService
             }
 
             $newId = $this->roleModel->getInsertID();
+            helper('audit');
+            audit_log('roles', 'CREATE', $newId, null, $data);
             $position = $this->roleModel->getPosition($newId, $params);
 
             $this->roleModel->db->transCommit();
@@ -99,10 +101,14 @@ class RoleService
         $this->roleModel->db->transBegin();
         
         try {
+            helper('audit');
+            $oldData = $this->roleModel->find($data['id']);
 
             if (!$this->roleModel->update($data['id'], $data)) {
                 throw new \Exception("Error updating role.");
             }
+
+            audit_log('roles', 'UPDATE', $data['id'], $oldData, $data);
     
             $this->aclService->deleteByRoleId($data['id']);
     
@@ -173,7 +179,12 @@ class RoleService
                 throw new \Exception("Role with ID {$id} not found.");
             }
     
+            helper('audit');
+            $oldData = $this->roleModel->find($id);
+
             $this->roleModel->delete($id);
+
+            audit_log('roles', 'DELETE', $id, $oldData, null);
 
             $position = $this->roleModel->getPosition($id, $params, true);
             $this->roleModel->db->transCommit();
