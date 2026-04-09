@@ -162,6 +162,12 @@ class UserService
             // \dd($params);
             $position = $this->userModel->getPosition($data['id'], $params);
 
+            // Audit Log Bulk Delete untuk Role dan ACL lama sebelum didelete
+            helper('audit');
+            $oldRoles = $this->userRoleModel->where('user_id', $data['id'])->findAll();
+            if (!empty($oldRoles)) {
+                audit_log('userroles', 'BULK_DELETE', $data['id'], $oldRoles, null);
+            }
             $this->userRoleModel->where('user_id', $data['id'])->delete();
 
             foreach ($roleIds as $roleId) {
@@ -172,6 +178,10 @@ class UserService
                 ]);
             }
 
+            $oldAcls = $this->userAclModel->where('user_id', $data['id'])->findAll();
+            if (!empty($oldAcls)) {
+                audit_log('useracl', 'BULK_DELETE', $data['id'], $oldAcls, null);
+            }
             $this->userAclModel->where('user_id', $data['id'])->delete();
 
             foreach ($aclIds as $acoId) {
@@ -214,8 +224,20 @@ class UserService
                 throw new \Exception("Error deleting user.");
             }
 
-            // 3. Hapus roles
+            // Audit Log Bulk Delete untuk Role dan ACL sebelum didelete dari database
+            helper('audit');
+            $oldRoles = $this->userRoleModel->where('user_id', $id)->findAll();
+            if (!empty($oldRoles)) {
+                audit_log('userroles', 'BULK_DELETE', $id, $oldRoles, null);
+            }
+            $oldAcls = $this->userAclModel->where('user_id', $id)->findAll();
+            if (!empty($oldAcls)) {
+                audit_log('useracl', 'BULK_DELETE', $id, $oldAcls, null);
+            }
+
+            // 3. Hapus roles dan acls
             $this->userRoleModel->where('user_id', $id)->delete();
+            $this->userAclModel->where('user_id', $id)->delete();
 
             $this->userModel->db->transCommit();
             return $position;
