@@ -46,14 +46,8 @@ class Role extends CustomModel
     protected $deletedField  = 'deleted_at';
 
     // Validation
-    protected $validationRules      = [
-        'rolename' => 'required',
-    ];
-    protected $validationMessages   = [
-        'rolename' => [
-            'required' => 'Role name is required',
-        ],
-    ];
+    protected $validationRules      = [];
+    protected $validationMessages   = [];
     protected $skipValidation       = false;
     protected $cleanValidationRules = true;
 

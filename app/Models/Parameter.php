@@ -110,4 +110,5 @@ class Parameter extends CustomModel
         // TODO: mapping data
         return $this->where('id', $id)->first();
     }
+
 }

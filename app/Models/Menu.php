@@ -68,22 +68,8 @@ class Menu extends CustomModel
     protected $deletedField  = 'deleted_at';
 
     // Validation
-    protected $validationRules      = [
-        'menuname'    => 'required|max_length[255]',
-        // 'menu_seq'    => 'required|is_natural',
-        // 'menu_parent' => 'permit_empty|is_natural',
-        // 'menu_icon'   => 'required|max_length[50]',
-        // 'link'        => 'required|max_length[50]',
-        'controller'  => 'permit_empty|max_length[100]',
-    ];
-    protected $validationMessages = [
-        'menuname' => [
-            'required' => 'Nama menu wajib diisi.'
-        ],
-        'controller' => [
-            'required' => 'Controller wajib diisi.'
-        ],
-    ];
+    protected $validationRules      = [];
+    protected $validationMessages   = [];
     protected $skipValidation       = false;
     protected $cleanValidationRules = true;
 

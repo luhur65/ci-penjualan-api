@@ -66,9 +66,12 @@ class MenuController extends BaseController
         ];
 
         try {
-            if (!$this->menuModel->validate($data)) {
+            $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\MenuCreateRequest())->rules();
+
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
-                    'errors' => $this->menuModel->errors()
+                    'errors' => $validation->getErrors()
                 ], 422);
             }
 
@@ -110,9 +113,12 @@ class MenuController extends BaseController
         ];
 
         try {
-            if (!$this->menuModel->validate($data)) {
+            $validation = \Config\Services::validation();
+            $rules = (new \App\Validation\MenuUpdateRequest())->rules($id);
+
+            if (!$validation->setRules($rules)->run($data)) {
                 return $this->respond([
-                    'errors' => $this->menuModel->errors()
+                    'errors' => $validation->getErrors()
                 ], 422);
             }
 
