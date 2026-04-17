@@ -42,6 +42,11 @@ $routes->group("api", ['filter' => ['jwtFilter']], function ($routes) {
 
 $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($routes) {
     
+    // Notifications Route
+    $routes->get('notifications/unread', [\App\Controllers\Api\NotificationController::class, 'getUnread']);
+    $routes->patch('notifications/read/(:num)', [\App\Controllers\Api\NotificationController::class, 'markAsRead/$1']);
+    $routes->get('notifications/download/(:segment)', [\App\Controllers\Api\NotificationController::class, 'download/$1']);
+
     // user routes
     $routes->get('users/fieldlength', [UserController::class, 'fieldLength']);
     $routes->get('users/export', [UserController::class, 'export']);
