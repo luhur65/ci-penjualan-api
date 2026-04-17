@@ -66,13 +66,9 @@ class MenuController extends BaseController
         ];
 
         try {
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\MenuCreateRequest())->rules();
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\MenuCreateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->menuService->create($data, $payload);
@@ -113,13 +109,9 @@ class MenuController extends BaseController
         ];
 
         try {
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\MenuUpdateRequest())->rules($id);
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\MenuUpdateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->menuService->update($data, $payload);

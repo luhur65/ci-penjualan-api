@@ -79,13 +79,9 @@ class UserController extends BaseController
                 'statusaktif' => $payload['statusaktif'] ?? null,
             ];
 
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\UserCreateRequest())->rules();
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\UserCreateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             // Proses penyimpanan ke service
@@ -123,13 +119,9 @@ class UserController extends BaseController
                 'statusaktif' => $payload['statusaktif'] ?? null,
             ];
 
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\UserUpdateRequest())->rules($id);
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\UserUpdateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->userService->update($data, $payload);

@@ -89,26 +89,52 @@ class Parameter extends CustomModel
     public function getAll()
     {
         $query = $this->builder();
-        $query->select([
-            'parameters.grp',
-            'parameters.subgrp',
-            'parameters.kelompok',
-            'parameters.text',
-            'parameters.memo',
-            'parameters.type',
-            'parameters.is_default as default',
-            'parameters.modified_by as modifiedby',
-            'parameters.created_at',
-            'parameters.updated_at'
-        ]);
+
+        $query->select("
+            parameters.id,
+            parameters.grp,
+            parameters.subgrp,
+            parameters.kelompok,
+            parameters.text,
+            parameters.memo,
+            CASE 
+                WHEN parameters.type = 0 THEN '' 
+                ELSE parent.grp 
+            END AS type,
+            parameters.is_default AS defaulttext,
+            parameters.modified_by AS modifiedby,
+            parameters.created_at,
+            parameters.updated_at
+        ", false);
+
+        $query->join('parameters parent', 'parent.id = parameters.type', 'left');
 
         return $this->datatable($query);
     }
 
     public function findOne($id = null)
     {
-        // TODO: mapping data
-        return $this->where('id', $id)->first();
+        $query = $this->builder();
+        $query->select([
+            'parameters.id',
+            'parameters.grp',
+            'parent.grp as grup',
+            'parameters.subgrp',
+            'parameters.kelompok',
+            'parameters.text',
+            'parameters.memo',
+            'parameters.type',
+            'parameters.is_default as defaulttext',
+            'parameters.modified_by as modifiedby',
+            'parameters.created_at',
+            'parameters.updated_at'
+        ]);
+
+        $query->join('parameters parent', 'parent.id = parameters.type', 'left');
+
+        $query->where('parameters.id', $id);
+
+        return $query->get()->getRow();
     }
 
 }

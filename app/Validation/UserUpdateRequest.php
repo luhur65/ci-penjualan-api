@@ -4,9 +4,15 @@ namespace App\Validation;
 
 class UserUpdateRequest
 {
-    public function rules($id = null): array
+    /**
+     * Get the validation rules.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function rules($data = []): array
     {
-        $idCondition = $id ? ",id,{$id}" : "";
+        $idCondition = $data['id'] ? ",id,{$data['id']}" : "";
         return [
             'id'       => 'required|is_natural_no_zero',
             'fullname' => 'required|max_length[254]|min_length[3]|alpha_space',
@@ -14,5 +20,23 @@ class UserUpdateRequest
             'username' => "required|max_length[30]|alpha_numeric_space|min_length[3]|is_unique[users.username{$idCondition}]",
             'statusaktif' => 'permit_empty|is_natural_no_zero',
         ];
+    }
+
+    /**
+     * Get the labels for the validation rules.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function labels(array $data = []): array
+    {
+        $labels = [
+            'fullname' => 'Nama Lengkap',
+            'email'    => 'Email',
+            'username' => 'Username',
+            'statusaktif' => 'Status Aktif',
+        ];
+
+        return $labels;
     }
 }

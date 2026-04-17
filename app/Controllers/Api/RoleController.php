@@ -61,13 +61,9 @@ class RoleController extends BaseController
         ];
 
         try {
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\RoleCreateRequest())->rules();
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\RoleCreateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->roleService->create($data, $payload);
@@ -103,13 +99,9 @@ class RoleController extends BaseController
         ];
 
         try {
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\RoleUpdateRequest())->rules($id);
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\RoleUpdateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->roleService->update($data, $payload);

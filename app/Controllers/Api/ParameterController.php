@@ -31,6 +31,16 @@ class ParameterController extends BaseController
         return $this->respond($this->parameterService->getAllParameters($requestData));
     }
 
+
+    public function show($id = null)
+    {
+        $parameter = $this->parameterService->getParameterById($id);
+        if (!$parameter) {
+            return $this->failNotFound("Parameter not found");
+        }
+        return $this->respond($parameter);
+    }
+
     public function getCombo()
     {
         $grp = $this->request->getVar('grp');
@@ -42,8 +52,10 @@ class ParameterController extends BaseController
     {
         $grp = $this->request->getVar('grp');
         $subgrp = $this->request->getVar('subgrp');
+        $data = $this->parameterService->getLookup($grp, $subgrp);
         return $this->respond([
-            'data' => $this->parameterService->getLookup($grp, $subgrp)
+            'data' => $data,
+            // 'typedata' => $data['typedata'],
         ]);
     }
 
@@ -66,17 +78,13 @@ class ParameterController extends BaseController
                 'text'        => $payload['text'] ?? null,
                 'memo'        => $payload['memo'] ?? null,
                 'type'        => $payload['type'] ?? null,
-                'is_default'  => $payload['is_default'] ?? 0,
+                'is_default'  => $payload['defaulttext'] ?? "",
                 'modified_by' => $authUserName ?? null,
             ];
 
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\ParameterCreateRequest())->rules();
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\ParameterCreateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->parameterService->create($data, $payload);
@@ -110,17 +118,13 @@ class ParameterController extends BaseController
                 'text'        => $payload['text'] ?? null,
                 'memo'        => $payload['memo'] ?? null,
                 'type'        => $payload['type'] ?? null,
-                'is_default'  => $payload['is_default'] ?? 0,
+                'is_default'  => $payload['defaulttext'] ?? 0,
                 'modified_by' => $authUserName ?? null,
             ];
 
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\ParameterUpdateRequest())->rules($id);
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\ParameterUpdateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->parameterService->update($data, $payload);

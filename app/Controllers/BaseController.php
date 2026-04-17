@@ -68,11 +68,29 @@ abstract class BaseController extends Controller
 
     protected function authUserName()
     {
-        return $this->getUserData()['name'] ?? null;
+        return strtoupper($this->getUserData()['name']) ?? null;
     }
 
     protected function authUserId()
     {
         return $this->getUserData()['id'] ?? null;
+    }
+
+    protected function validateWithLabels(array $data, object $request): bool|array
+    {
+        $rules  = $request->rules($data);
+        $labels = method_exists($request, 'labels') ? $request->labels($data) : [];
+
+        $validation = \Config\Services::validation();
+        foreach ($rules as $field => $rule) {
+            $label = $labels[$field] ?? $field;
+            $validation->setRule($field, $label, $rule);
+        }
+
+        if (!$validation->run($data)) {
+            return $validation->getErrors();
+        }
+
+        return true;
     }
 }

@@ -57,13 +57,9 @@ class ErrorController extends BaseController
                 'modified_by' => $authUserName ?? null,
             ];
 
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\ErrorCreateRequest())->rules();
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\ErrorCreateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->errorService->create($data, $payload);
@@ -96,13 +92,9 @@ class ErrorController extends BaseController
                 'modified_by' => $authUserName ?? null,
             ];
 
-            $validation = \Config\Services::validation();
-            $rules = (new \App\Validation\ErrorUpdateRequest())->rules($id);
-
-            if (!$validation->setRules($rules)->run($data)) {
-                return $this->respond([
-                    'errors' => $validation->getErrors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\ErrorUpdateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->errorService->update($data, $payload);

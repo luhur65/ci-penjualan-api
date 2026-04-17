@@ -62,11 +62,9 @@ class {name}Controller extends BaseController
                 // TODO: mapping data
             ];
 
-            // Validasi manual menggunakan validate()
-            if (!$this->{var}Model->validate($data)) {
-                return $this->respond([
-                    'errors' => $this->{var}Model->errors()  // Menyertakan pesan error validasi
-                ], 422);  // Status code 422 for unprocessable entity
+            $result = $this->validateWithLabels($data, new \App\Validation\{name}CreateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             // Proses penyimpanan ke service
@@ -98,10 +96,9 @@ class {name}Controller extends BaseController
                 // TODO: mapping data
             ];
 
-            if (!$this->{var}Model->validate($data)) {
-                return $this->respond([
-                    'errors' => $this->{var}Model->errors()
-                ], 422);
+            $result = $this->validateWithLabels($data, new \App\Validation\{name}UpdateRequest());
+            if ($result !== true) {
+                return $this->respond(['errors' => $result], 422);
             }
 
             $result = $this->{var}Service->update($data, $payload);

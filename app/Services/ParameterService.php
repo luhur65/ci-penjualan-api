@@ -65,7 +65,7 @@ class ParameterService
     }
 
     // simpan cache 24 jam
-    $cache->save($cacheKey, $result, 86400);
+    // $cache->save($cacheKey, $result, 86400);
 
     return $result;
   }
@@ -82,16 +82,18 @@ class ParameterService
     }
 
     $builder = $this->parameterModel->where('grp', $grp);
-    if ($subgrp !== null) {
+    if ($subgrp !== null && $subgrp !== '') {
       $builder->where('subgrp', $subgrp);
     }
 
     $data = $builder->findAll();
     $result = [];
 
+    // if (!empty($data)) return $result;
+    
     foreach ($data as $item) {
       $memo = json_decode($item['memo'], true);
-
+      
       $result[] = [
         'id'        => $item['id'],
         'param'     => $item['id'],
@@ -100,7 +102,7 @@ class ParameterService
         'default'   => $item['default'] ?? 'TIDAK'
       ];
     }
-
+    
     // simpan cache 24 jam
     $cache->save($cacheKey, $result, 86400);
 
@@ -109,7 +111,13 @@ class ParameterService
 
   public function getParameterById($id)
   {
-    return $this->parameterModel->find($id);
+    $parameter = $this->parameterModel->findOne($id);
+
+    $data = [
+      'data' => $parameter
+    ];
+
+    return $data;
   }
 
   /**
@@ -123,6 +131,8 @@ class ParameterService
   public function create(array $data, array $params = []): array
   {
     $this->parameterModel->db->transBegin();
+
+    $data['memo'] = json_encode($data['memo']);
 
     try {
       if (!$this->parameterModel->insert($data)) {
@@ -153,6 +163,8 @@ class ParameterService
   public function update(array $data, array $params = []): array
   {
     $this->parameterModel->db->transBegin();
+
+    $data['memo'] = json_encode($data['memo']);
 
     try {
       if (!$this->parameterModel->update($data['id'], $data)) {
