@@ -12,6 +12,9 @@ class ExportJob extends BaseJob
 {
     public function process()
     {
+        // Increase memory limit for generating large Excel files
+        ini_set('memory_limit', '512M');
+
         $payload = $this->data;
         $userId  = $payload['userId'] ?? null;
         $filters = $payload['filters'] ?? [];
@@ -49,18 +52,41 @@ class ExportJob extends BaseJob
 
         $downloadUrl = base_url('api/notifications/download/' . $fileName . '.xlsx');
 
+        $title = 'Export Selesai';
+        $message = 'File laporan user sudah selesai digenerate.';
+
         // Create notification
         $notificationModel = new NotificationModel();
         $notificationModel->insert([
             'user_id' => $userId,
-            'title' => 'Export Selesai',
-            'message' => 'File laporan user sudah selesai digenerate.',
+            'title' => $title,
+            'message' => $message,
             'type' => 'success',
             'is_read' => 0,
             'action_url' => $downloadUrl,
             'created_at' => date('Y-m-d H:i:s'),
             'updated_at' => date('Y-m-d H:i:s')
         ]);
+
+        // Emit WebSocket Notification
+        try {
+            $client = \Config\Services::curlrequest();
+            $client->post('http://localhost:3000/emit-notification', [
+                'headers' => [
+                    'Authorization' => 'Bearer my-secret-internal-token',
+                    'Content-Type' => 'application/json'
+                ],
+                'json' => [
+                    'user_id' => $userId,
+                    'title' => $title,
+                    'message' => $message,
+                    'action_url' => $downloadUrl
+                ],
+                'timeout' => 3
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to emit websocket notification: ' . $e->getMessage());
+        }
 
         if ($email) {
             // Point the email URL to the frontend so it can make an authenticated request.
