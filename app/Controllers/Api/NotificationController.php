@@ -73,7 +73,7 @@ class NotificationController extends BaseController
         if (!$notification || empty($fileName) || !file_exists($filePath) || !is_file($filePath)) {
             return $this->failNotFound("File not found or unauthorized");
         }
-
+        $this->response->setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
         return $this->response->download($filePath, null);
     }
 }

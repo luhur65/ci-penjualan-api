@@ -38,14 +38,14 @@ $routes->group("api", ['filter' => ['jwtFilter']], function ($routes) {
     $routes->get('grid-preferences', [GridPreferencesController::class, 'getGridPreferences']);
     $routes->post('grid-preferences', [GridPreferencesController::class, 'saveGridPreferences']);
     $routes->delete('grid-preferences/(:segment)', [GridPreferencesController::class, 'deleteGridPreferences/$1']);
-});
 
-$routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($routes) {
-    
     // Notifications Route
     $routes->get('notifications/unread', [\App\Controllers\Api\NotificationController::class, 'getUnread']);
     $routes->patch('notifications/read/(:num)', [\App\Controllers\Api\NotificationController::class, 'markAsRead/$1']);
     $routes->get('notifications/download/(:segment)', [\App\Controllers\Api\NotificationController::class, 'download/$1']);
+});
+
+$routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($routes) {
 
     // user routes
     $routes->get('users/fieldlength', [UserController::class, 'fieldLength']);
