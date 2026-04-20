@@ -112,6 +112,7 @@ class Queue extends BaseQueue
      */
     public array $jobHandlers = [
         'export' => \App\Jobs\ExportJob::class,
+        'email'  => \App\Jobs\SendEmailJob::class,
     ];
 
 }

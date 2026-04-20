@@ -266,20 +266,19 @@ class LoginController extends BaseController
 
         $resetLink = $this->generateLinkReset($rawToken, $userRow['username']);
 
-        // kirim email
-        $mailer = new EmailSender();
-        $mailer->sendEmail(
-            $email,
-            'Reset Password',
-            'reset_password',
-            [
+        // kirim email via queue
+        service('queue')->push('default', 'email', [
+            'email'    => $email,
+            'subject'  => 'Reset Password',
+            'template' => 'reset_password',
+            'data'     => [
                 'username' => $username,
-                'link' => $resetLink,
-                'token' => $rawToken,
-                'title' => 'Reset Password',
-                'appName' => 'Admin Sistem'
+                'link'     => $resetLink,
+                'token'    => $rawToken,
+                'title'    => 'Reset Password',
+                'appName'  => 'Admin Sistem'
             ]
-        );
+        ]);
 
         return $this->respond([
             'message' => 'Link reset sudah dikirim ke email.',
