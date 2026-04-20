@@ -18,7 +18,7 @@ class EmailSender
   }
 
   // Fungsi untuk mengirim email dengan HTML
-  public function sendEmail($to, $subject = null, $link = null, $token = null, $username = null)
+  public function sendEmail($to, $subject = null, $template = 'reset_password', $data = [])
   {
     try {
 
@@ -26,7 +26,9 @@ class EmailSender
       $this->email->setFrom($this->from, $this->fromName);
       $this->email->setTo($to);
       $this->email->setSubject($subject ?? $this->subject);
-      $this->email->setMessage($this->generateHTML($link ?? $this->link, $subject ?? $this->subject, $token, $username)); // Menggunakan fungsi generateHTML untuk menambah styling
+
+      $message = $this->renderTemplate($template, $data);
+      $this->email->setMessage($message);
 
       // Mengatur jenis email untuk HTML
       $this->email->setMailType($this->type);
@@ -42,7 +44,14 @@ class EmailSender
     }
   }
 
+  // Fungsi untuk merender template email
+  private function renderTemplate($template, $data)
+  {
+    return view('emails/' . $template, $data);
+  }
+
   /**
+   * [DEPRECATED] 
    * Cara pakai:
    * generateHTML($link, $subject, $token, $username)
    *
