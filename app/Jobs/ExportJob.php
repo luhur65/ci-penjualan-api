@@ -6,6 +6,7 @@ use CodeIgniter\Queue\BaseJob;
 
 use App\Services\UserService;
 use App\Libraries\ExcelMaker;
+use App\Libraries\EmailSender;
 use App\Models\Notification as NotificationModel;
 
 class ExportJob extends BaseJob
@@ -77,6 +78,7 @@ class ExportJob extends BaseJob
                     'Content-Type' => 'application/json'
                 ],
                 'json' => [
+                    'id' => $notificationModel->getInsertID(),
                     'user_id' => $userId,
                     'title' => $title,
                     'message' => $message,
@@ -88,16 +90,23 @@ class ExportJob extends BaseJob
             log_message('error', 'Failed to emit websocket notification: ' . $e->getMessage());
         }
 
-        if ($email) {
-            // Point the email URL to the frontend so it can make an authenticated request.
-            $frontendBaseUrl = getenv('app.frontendURL') ?: 'http://localhost:3000';
-            $frontendUrl = rtrim($frontendBaseUrl, '/') . '/download?file=' . $fileName . '.xlsx';
+        // if ($email) {
+        //     // Point the email URL to the frontend so it can make an authenticated request.
+        //     $frontendBaseUrl = getenv('frontend.baseURL') ?: 'https://projects.karaya.site/belajarci4/';
+        //     $frontendUrl = rtrim($frontendBaseUrl, '/') . '/download?file=' . $fileName . '.xlsx';
 
-            $emailService = \Config\Services::email();
-            $emailService->setTo($email);
-            $emailService->setSubject('Export Laporan User Selesai');
-            $emailService->setMessage("Laporan user yang Anda minta telah selesai digenerate. Silakan klik link berikut untuk mengunduh: <a href='{$frontendUrl}'>Download</a>");
-            $emailService->send();
-        }
+        //     $mailer = new EmailSender();
+        //     $mailer->sendEmail(
+        //         $email,
+        //         'Export Selesai',
+        //         'export_info',
+        //         [
+        //             'username' => $email,
+        //             'downloadUrl' => $frontendUrl,
+        //             'title' => 'Export Selesai',
+        //             'appName' => 'Admin Sistem'
+        //         ]
+        //     );
+        // }
     }
 }

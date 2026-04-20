@@ -171,13 +171,13 @@ class UserController extends BaseController
     {
         $filters = $this->request->getGet();
         $userId  = $this->authUserId() ?? null;
-        $email   = $this->getUserData()['email'] ?? null;
+        $user    = (object) $this->userService->getUserById($userId);
 
         // Dispatch background job for export
         service('queue')->push('default', 'export', [
             'userId'  => $userId,
             'filters' => $filters,
-            'email'   => $email
+            'email'   => $user->email
         ]);
 
         return $this->respond([
