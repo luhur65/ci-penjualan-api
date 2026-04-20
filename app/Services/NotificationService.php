@@ -112,6 +112,55 @@ class NotificationService
     }
 
     /**
+     * Creates a notification and emits a WebSocket event.
+     *
+     * @param int|null $userId
+     * @param string $title
+     * @param string $message
+     * @param string|null $downloadUrl
+     * @param string $type
+     * @return int|string The inserted notification ID
+     */
+    public function sendNotificationWithWebSocket($userId, string $title, string $message, string $downloadUrl = null, string $type = 'success')
+    {
+        $this->notificationModel->insert([
+            'user_id'    => $userId,
+            'title'      => $title,
+            'message'    => $message,
+            'type'       => $type,
+            'is_read'    => 0,
+            'action_url' => $downloadUrl,
+            'created_at' => date('Y-m-d H:i:s'),
+            'updated_at' => date('Y-m-d H:i:s')
+        ]);
+
+        $notificationId = $this->notificationModel->getInsertID();
+
+        // Emit WebSocket Notification
+        try {
+            $client = \Config\Services::curlrequest();
+            $client->post('http://localhost:3000/emit-notification', [
+                'headers' => [
+                    'Authorization' => 'Bearer my-secret-internal-token',
+                    'Content-Type'  => 'application/json'
+                ],
+                'json' => [
+                    'id'         => $notificationId,
+                    'user_id'    => $userId,
+                    'title'      => $title,
+                    'message'    => $message,
+                    'action_url' => $downloadUrl
+                ],
+                'timeout' => 3
+            ]);
+        } catch (\Exception $e) {
+            log_message('error', 'Failed to emit websocket notification: ' . $e->getMessage());
+        }
+
+        return $notificationId;
+    }
+
+    /**
      * Deletes a notification.
      *
      * @param int|string $id notification ID to delete.

@@ -7,7 +7,7 @@ use CodeIgniter\Queue\BaseJob;
 use App\Services\UserService;
 use App\Libraries\ExcelMaker;
 use App\Libraries\EmailSender;
-use App\Models\Notification as NotificationModel;
+use App\Services\NotificationService;
 
 class ExportJob extends BaseJob
 {
@@ -56,39 +56,9 @@ class ExportJob extends BaseJob
         $title = 'Export Selesai';
         $message = 'File laporan user sudah selesai digenerate.';
 
-        // Create notification
-        $notificationModel = new NotificationModel();
-        $notificationModel->insert([
-            'user_id' => $userId,
-            'title' => $title,
-            'message' => $message,
-            'type' => 'success',
-            'is_read' => 0,
-            'action_url' => $downloadUrl,
-            'created_at' => date('Y-m-d H:i:s'),
-            'updated_at' => date('Y-m-d H:i:s')
-        ]);
-
-        // Emit WebSocket Notification
-        try {
-            $client = \Config\Services::curlrequest();
-            $client->post('http://localhost:3000/emit-notification', [
-                'headers' => [
-                    'Authorization' => 'Bearer my-secret-internal-token',
-                    'Content-Type' => 'application/json'
-                ],
-                'json' => [
-                    'id' => $notificationModel->getInsertID(),
-                    'user_id' => $userId,
-                    'title' => $title,
-                    'message' => $message,
-                    'action_url' => $downloadUrl
-                ],
-                'timeout' => 3
-            ]);
-        } catch (\Exception $e) {
-            log_message('error', 'Failed to emit websocket notification: ' . $e->getMessage());
-        }
+        // Create notification and Emit WebSocket
+        $notificationService = new NotificationService();
+        $notificationService->sendNotificationWithWebSocket($userId, $title, $message, $downloadUrl);
 
         // if ($email) {
         //     // Point the email URL to the frontend so it can make an authenticated request.
