@@ -8,7 +8,10 @@ use App\Controllers\Api\RoleController;
 use App\Controllers\Api\AcosController;
 use App\Controllers\Api\ParameterController;
 use App\Controllers\Api\PenjualanController;
+use App\Controllers\Api\PelangganController;
+use App\Controllers\Api\ErrorController;
 use App\Controllers\Api\GridPreferencesController;
+use App\Controllers\Api\TestingMasterDetailController;
 
 /**
  * @var RouteCollection $routes
@@ -50,6 +53,9 @@ $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($route
     // user routes
     $routes->get('users/fieldlength', [UserController::class, 'fieldLength']);
     $routes->get('users/export', [UserController::class, 'export']);
+    
+    // pelanggan routes (dropdown)
+    $routes->get('pelanggan', [PelangganController::class, 'index']);
     $routes->resource("users", ['namespace' => '', 'controller' => UserController::class]);
 
     // role routes
@@ -74,5 +80,28 @@ $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($route
     // penjualan routes
     $routes->get('penjualan/fieldlength', [PenjualanController::class, 'fieldLength']);
     $routes->resource('penjualan', ['namespace' => '', 'controller' => PenjualanController::class]);
+
+    // error routes
+    $routes->resource('error', ['namespace' => '', 'controller' => ErrorController::class]);
+
+    // testingmasterdetail routes (master - penjualan)
+    // !! PENTING: Route spesifik harus sebelum segment !!
+    $routes->get('testingmasterdetail/fieldlength', [TestingMasterDetailController::class, 'fieldLength']);
+    $routes->get('testingmasterdetail/export', [TestingMasterDetailController::class, 'export']);
+    $routes->get('testingmasterdetail', [TestingMasterDetailController::class, 'index']);
+    $routes->post('testingmasterdetail', [TestingMasterDetailController::class, 'create']);
+
+    // detail sub-routes (HARUS sebelum testingmasterdetail/(:segment))
+    $routes->post('testingmasterdetail/detail', [TestingMasterDetailController::class, 'createDetail']);
+    $routes->get('testingmasterdetail/detail/(:segment)', [TestingMasterDetailController::class, 'showDetail/$1']);
+    $routes->patch('testingmasterdetail/detail/(:segment)', [TestingMasterDetailController::class, 'updateDetail/$1']);
+    $routes->delete('testingmasterdetail/detail/(:segment)', [TestingMasterDetailController::class, 'deleteDetail/$1']);
+
+    // master segment routes
+    $routes->get('testingmasterdetail/(:segment)/detail/export', [TestingMasterDetailController::class, 'exportDetail/$1']);
+    $routes->get('testingmasterdetail/(:segment)/detail', [TestingMasterDetailController::class, 'indexDetail/$1']);
+    $routes->get('testingmasterdetail/(:segment)', [TestingMasterDetailController::class, 'show/$1']);
+    $routes->patch('testingmasterdetail/(:segment)', [TestingMasterDetailController::class, 'update/$1']);
+    $routes->delete('testingmasterdetail/(:segment)', [TestingMasterDetailController::class, 'delete/$1']);
 
 });
