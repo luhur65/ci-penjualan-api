@@ -1,0 +1,479 @@
+# Instincts generated from https://github.com/luhur65/ci-penjualan-api
+# Generated: 2026-06-06T02:31:12.264Z
+# Version: 2.0
+# NOTE: This file supplements (does not replace) any existing curated instincts.
+# High-confidence manually curated instincts should be preserved alongside these.
+
+---
+id: ci-penjualan-api-commit-conventional
+trigger: "when writing a commit message"
+confidence: 0.85
+domain: git
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Commit Conventional
+
+## Action
+
+Use conventional commit format with prefixes: feat, refactor
+
+## Evidence
+
+- 7 commits analyzed
+- Detected conventional commit pattern
+- Examples: feat: Implement background processing for user data exports with queue and notifications, refactor: Update route grouping and enhance notification response headers
+
+---
+id: ci-penjualan-api-commit-length
+trigger: "when writing a commit message"
+confidence: 0.6
+domain: git
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Commit Length
+
+## Action
+
+Write moderate-length commit messages (~82 characters)
+
+## Evidence
+
+- Average commit message length: 82 chars
+- Based on 7 commits
+
+---
+id: ci-penjualan-api-naming-files
+trigger: "when creating a new file"
+confidence: 0.8
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Naming Files
+
+## Action
+
+Use PascalCase naming convention
+
+## Evidence
+
+- Analyzed file naming patterns in repository
+- Dominant pattern: PascalCase
+
+---
+id: ci-penjualan-api-import-relative
+trigger: "when importing modules"
+confidence: 0.75
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Import Relative
+
+## Action
+
+Use relative imports for project files
+
+## Evidence
+
+- Import analysis shows relative import pattern
+- Example: import { x } from '../lib/x'
+
+---
+id: ci-penjualan-api-export-style
+trigger: "when exporting from a module"
+confidence: 0.7
+domain: code-style
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Export Style
+
+## Action
+
+Prefer named exports
+
+## Evidence
+
+- Export pattern analysis
+- Dominant style: named
+
+---
+id: ci-penjualan-api-test-separate
+trigger: "when writing tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Test Separate
+
+## Action
+
+Place tests in the tests/ or __tests__/ directory, mirroring src structure
+
+## Evidence
+
+- Separate test directory pattern detected
+- Tests live in dedicated test folders
+
+---
+id: ci-penjualan-api-workflow-refactoring
+trigger: "when refactoring code"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Workflow Refactoring
+
+## Action
+
+Follow the refactoring workflow:
+1. Ensure tests pass before refactor
+2. Refactor code structure
+3. Verify tests still pass
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~17x per month
+- Files: src/**/*
+
+---
+id: ci-penjualan-api-workflow-add-background-job-with-queue
+trigger: "when doing add background job with queue"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Workflow Add Background Job With Queue
+
+## Action
+
+Follow the add-background-job-with-queue workflow:
+1. Create a new Job class in app/Jobs (e.g., ExportJob.php, SendEmailJob.php)
+2. Register the job in app/Config/Queue.php
+3. Update relevant Controller to dispatch the job instead of running logic synchronously
+4. Update or create related Service or Library classes if needed
+5. Update composer.json/lock if new packages are required
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: app/Jobs/*.php, app/Config/Queue.php, app/Controllers/Api/*.php
+
+---
+id: ci-penjualan-api-workflow-add-notification-feature
+trigger: "when doing add notification feature"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Workflow Add Notification Feature
+
+## Action
+
+Follow the add-notification-feature workflow:
+1. Create or update Notification model, service, and controller (app/Models/Notification.php, app/Services/NotificationService.php, app/Controllers/Api/NotificationController.php)
+2. Add or update database migration for notifications (app/Database/Migrations/*CreateNotificationsTable.php)
+3. Update routes in app/Config/Routes.php
+4. Update job or service to emit notification (e.g., ExportJob.php, NotificationService.php)
+5. Implement secure file serving and ownership checks if needed
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: app/Models/Notification.php, app/Services/NotificationService.php, app/Controllers/Api/NotificationController.php
+
+---
+id: ci-penjualan-api-workflow-refactor-feature-to-use-service
+trigger: "when doing refactor feature to use service"
+confidence: 0.6
+domain: workflow
+source: repo-analysis
+source_repo: https://github.com/luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Workflow Refactor Feature To Use Service
+
+## Action
+
+Follow the refactor-feature-to-use-service workflow:
+1. Move logic from job/controller to a new or existing service in app/Services
+2. Update job/controller to use the service method
+3. Test to ensure behavior remains unchanged
+
+## Evidence
+
+- Workflow detected from commit patterns
+- Frequency: ~2x per month
+- Files: app/Services/*.php, app/Jobs/*.php, app/Controllers/Api/*.php
+
+---
+id: ci-penjualan-api-instinct-file-naming
+trigger: "When creating a new file (class, controller, service, job, etc.)"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct File Naming
+
+## Action
+
+Name the file using PascalCase (e.g., ExportJob.php, NotificationService.php)
+
+## Evidence
+
+- Pattern in files: app/Jobs/ExportJob.php, app/Services/NotificationService.php
+
+---
+id: ci-penjualan-api-instinct-function-naming
+trigger: "When defining a function or method"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Function Naming
+
+## Action
+
+Use camelCase for function and method names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.functions
+
+---
+id: ci-penjualan-api-instinct-class-naming
+trigger: "When defining a class"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Class Naming
+
+## Action
+
+Use PascalCase for class names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.classes
+
+---
+id: ci-penjualan-api-instinct-constant-naming
+trigger: "When defining a constant"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Constant Naming
+
+## Action
+
+Use SCREAMING_SNAKE_CASE for constant names
+
+## Evidence
+
+- Pattern in codeStyle.namingConventions.constants
+
+---
+id: ci-penjualan-api-instinct-import-style
+trigger: "When importing modules or files"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Import Style
+
+## Action
+
+Use relative import paths
+
+## Evidence
+
+- Pattern in codeStyle.importStyle
+
+---
+id: ci-penjualan-api-instinct-export-style
+trigger: "When exporting modules or functions"
+confidence: 0.9
+domain: code-style
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Export Style
+
+## Action
+
+Use named exports
+
+## Evidence
+
+- Pattern in codeStyle.exportStyle
+
+---
+id: ci-penjualan-api-instinct-git-commit-format
+trigger: "When writing a git commit message"
+confidence: 0.9
+domain: git
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Git Commit Format
+
+## Action
+
+Use conventional commit prefixes (feat, refactor), followed by a colon and a concise description
+
+## Evidence
+
+- Seen in commit: feat: Implement background processing for user data exports with queue and notifications
+- Seen in commit: refactor: Update route grouping and enhance notification response headers
+
+---
+id: ci-penjualan-api-instinct-git-commit-length
+trigger: "When writing a git commit message"
+confidence: 0.8
+domain: git
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Git Commit Length
+
+## Action
+
+Keep the commit message length around 80 characters on average
+
+## Evidence
+
+- Pattern in commits.averageLength: 82
+
+---
+id: ci-penjualan-api-instinct-add-background-job
+trigger: "When someone wants to offload a time-consuming process (like export or email) to a background queue job"
+confidence: 0.9
+domain: workflow
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Add Background Job
+
+## Action
+
+Create a new Job class in app/Jobs, register it in app/Config/Queue.php, update the relevant controller to dispatch the job, update or create related services, and update composer.json/lock if needed
+
+## Evidence
+
+- Workflow: add-background-job-with-queue
+- Seen in commits: Create a new Job class in app/Jobs (e.g., ExportJob.php, SendEmailJob.php)
+
+---
+id: ci-penjualan-api-instinct-add-notification-feature
+trigger: "When someone wants to notify users about an event (e.g., export completion, password reset) via in-app notification, email, or real-time WebSocket"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Add Notification Feature
+
+## Action
+
+Create or update Notification model, service, and controller; add or update database migration for notifications; update routes; update job or service to emit notification; implement secure file serving and ownership checks if needed
+
+## Evidence
+
+- Workflow: add-notification-feature
+- Seen in commits: Create or update Notification model, service, and controller
+
+---
+id: ci-penjualan-api-instinct-refactor-to-service
+trigger: "When someone wants to centralize logic that is duplicated across jobs/controllers into a service class"
+confidence: 0.85
+domain: workflow
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Refactor To Service
+
+## Action
+
+Move logic from job/controller to a new or existing service in app/Services, update job/controller to use the service method, and test to ensure behavior remains unchanged
+
+## Evidence
+
+- Workflow: refactor-feature-to-use-service
+- Seen in commits: refactor: move WebSocket notification emission to NotificationService
+
+---
+id: ci-penjualan-api-instinct-refactor-test-sequence
+trigger: "When performing a refactor"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Refactor Test Sequence
+
+## Action
+
+Ensure tests pass before refactoring, refactor the code, then verify tests still pass
+
+## Evidence
+
+- Workflow: refactoring
+- Commit sequence: Ensure tests pass before refactor → Refactor code structure → Verify tests still pass
+
+---
+id: ci-penjualan-api-instinct-test-location
+trigger: "When adding or updating tests"
+confidence: 0.8
+domain: testing
+source: repo-analysis
+source_repo: luhur65/ci-penjualan-api
+---
+
+# Ci Penjualan Api Instinct Test Location
+
+## Action
+
+Place tests in a separate directory from the main source code
+
+## Evidence
+
+- Pattern in architecture.testLocation: separate
+
