@@ -218,7 +218,6 @@ class LoginController extends BaseController
 
         $payload = $this->request->getJSON(true);
         $username = trim((string) $payload['username']);
-        // $checkOnly = (bool) $payload['check']; // meniru checkValidation kamu
 
         $userModel = new User();
 
@@ -229,7 +228,7 @@ class LoginController extends BaseController
         // Anti user-enumeration: response sama walaupun user ga ada
         if (!$userRow) {
             return $this->respond([
-                'message' => 'Tidak ada user dengan username tersebut.',
+                'message' => 'Jika username ada, link reset akan dikirim ke email.',
             ], 500);
         }
 
@@ -267,11 +266,19 @@ class LoginController extends BaseController
 
         $resetLink = $this->generateLinkReset($rawToken, $userRow['username']);
 
-        // kirim email
-        $mailer = new EmailSender();
-        $subject = 'Reset Password';
-        // $message = "Klik link berikut untuk reset password (berlaku 30 menit):\n\n{$resetLink}";
-        $mailer->sendEmail($email, $subject, $resetLink, $rawToken, $userRow['username']);
+        // kirim email via queue
+        service('queue')->push('default', 'email', [
+            'email'    => $email,
+            'subject'  => 'Reset Password',
+            'template' => 'reset_password',
+            'data'     => [
+                'username' => $username,
+                'link'     => $resetLink,
+                'token'    => $rawToken,
+                'title'    => 'Reset Password',
+                'appName'  => 'Admin Sistem'
+            ]
+        ]);
 
         return $this->respond([
             'message' => 'Link reset sudah dikirim ke email.',

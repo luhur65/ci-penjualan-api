@@ -90,6 +90,57 @@ class ExcelMaker
       ->setContentType('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
   }
 
+  public function saveToFile(string $fileName, array $headers, array $data, string $dir)
+  {
+    $spreadsheet = new Spreadsheet();
+    $sheet = $spreadsheet->getActiveSheet();
+
+    $col = 'A';
+    foreach ($headers as $header) {
+      $sheet->setCellValue($col . '1', $header);
+      $col++;
+    }
+
+    if (!empty($headers)) {
+      $lastCol = chr(ord('A') + count($headers) - 1);
+      $headerStyle = [
+        'font' => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+        'fill' => [
+          'fillType' => Fill::FILL_SOLID,
+          'startColor' => ['rgb' => '4472C4']
+        ],
+        'alignment' => [
+          'horizontal' => Alignment::HORIZONTAL_CENTER,
+          'vertical' => Alignment::VERTICAL_CENTER,
+        ],
+        'borders' => [
+          'allBorders' => ['borderStyle' => Border::BORDER_THIN],
+        ],
+      ];
+      $sheet->getStyle("A1:{$lastCol}1")->applyFromArray($headerStyle);
+
+      foreach (range('A', $lastCol) as $columnID) {
+        $sheet->getColumnDimension($columnID)->setAutoSize(true);
+      }
+    }
+
+    if (!empty($data)) {
+      $sheet->fromArray($data, null, 'A2');
+    }
+
+    $writer = new Xlsx($spreadsheet);
+
+    // Ensure dir exists
+    if (!is_dir($dir)) {
+      mkdir($dir, 0777, true);
+    }
+
+    $fullPath = rtrim($dir, '/') . '/' . $fileName . '.xlsx';
+    $writer->save($fullPath);
+
+    return $fullPath;
+  }
+
   /**
    * Membaca template Excel fisik, mengisi data, lalu mendownloadnya
    */

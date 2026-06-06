@@ -414,7 +414,7 @@ class UserService
         return $this->_validatePermission($class, $method, $userid);
     }
 
-    private function _validatePermission($class = null, $method = null, $userid): bool
+    private function _validatePermission(string $class, string $method, int $userid): bool
     {
         if (in_array(strtolower($class), $this->exceptAuth['class'])) {
             return true;

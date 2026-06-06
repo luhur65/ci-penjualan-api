@@ -169,36 +169,20 @@ class UserController extends BaseController
      */
     public function export()
     {
-        $users = $this->userService->getAllUsers($this->request->getGet());
-        $excelData = [];
+        $filters = $this->request->getGet();
+        $userId  = $this->authUserId() ?? null;
+        $user    = (object) $this->userService->getUserById($userId);
 
-        // (Opsional) Jika Anda mengirimkan 'offset' dari FE, nomor urut bisa disesuaikan
-        $offset = $this->request->getGet('offset') ?? 0;
+        // Dispatch background job for export
+        service('queue')->push('default', 'export', [
+            'userId'  => $userId,
+            'filters' => $filters,
+            'email'   => $user->email
+        ]);
 
-        foreach ($users['data'] as $index => $user) {
-
-            $statusData = json_decode($user->statusaktif, true);
-            $statusMemo = $statusData['MEMO'] ?? '';
-
-            $excelData[] = [
-                $offset + $index + 1,      // Nomor Urut yang akurat
-                $user->fullname ?? '',
-                $user->email ?? '',
-                $user->username ?? '',
-                $statusMemo,
-                $user->modifiedby ?? '',
-                $user->created_at ?? '',
-                $user->updated_at ?? ''
-            ];
-        }
-
-        // 4. Tentukan Judul Kolom
-        $headers = ['NO', 'NAMA LENGKAP', 'EMAIL', 'USERNAME', 'STATUS AKTIF', 'MODIFIED BY', 'CREATED AT', 'UPDATED AT'];
-
-        // dd($excelData);
-
-        $excelService = new ExcelMaker();
-        return $excelService->generate('Laporan_User_' . date('Ymd_His'), $headers, $excelData);
+        return $this->respond([
+            'message' => 'Export process started in background. You will receive a notification when it is ready.'
+        ]);
     }
 
     /**
