@@ -8,6 +8,7 @@ use App\Libraries\ExcelMaker;
 use App\Models\TestingMasterDetail as TestingMasterDetailModel;
 use App\Models\TestingMasterDetailItem as TestingMasterDetailItemModel;
 use App\Services\TestingMasterDetailService;
+use App\Services\RunningNumberService;
 use CodeIgniter\HTTP\IncomingRequest;
 
 class TestingMasterDetailController extends BaseController
@@ -17,15 +18,17 @@ class TestingMasterDetailController extends BaseController
     protected $masterModel;
     protected $detailModel;
     protected $service;
+    protected $runningNumber;
 
     /** @var IncomingRequest $request */
     protected $request;
 
     public function __construct()
     {
-        $this->masterModel = new TestingMasterDetailModel();
-        $this->detailModel = new TestingMasterDetailItemModel();
-        $this->service     = new TestingMasterDetailService();
+        $this->masterModel   = new TestingMasterDetailModel();
+        $this->detailModel   = new TestingMasterDetailItemModel();
+        $this->service       = new TestingMasterDetailService();
+        $this->runningNumber = new RunningNumberService();
     }
 
     // =====================================================================
@@ -57,14 +60,42 @@ class TestingMasterDetailController extends BaseController
      * @ClassName 
      * @Keterangan TAMBAH DATA MASTER
      */
+    /**
+     * @ClassName
+     * @Keterangan GET NOMOR BUKTI BERIKUTNYA
+     */
+    public function nextnumber()
+    {
+        $nextNo = $this->runningNumber->generate(
+            table:     'tbl_penjualan',
+            column:    'no_bukti',
+            prefix:    'INV',
+            separator: '-',
+            pad:       7
+        );
+
+        return $this->respond(['next_number' => $nextNo]);
+    }
+
     public function create()
     {
         try {
             $authUserName = $this->authUserName();
             $payload      = $this->request->getJSON(true);
 
+            // Auto-generate no_bukti jika tidak dikirim dari FE
+            $noBukti = !empty($payload['no_bukti'])
+                ? $payload['no_bukti']
+                : $this->runningNumber->generate(
+                    table:     'tbl_penjualan',
+                    column:    'no_bukti',
+                    prefix:    'INV',
+                    separator: '-',
+                    pad:       7
+                );
+
             $data = [
-                'no_bukti'     => $payload['no_bukti']     ?? null,
+                'no_bukti'     => $noBukti,
                 'tgl_bukti'    => $payload['tgl_bukti']    ?? null,
                 'pelanggan_id' => $payload['pelanggan_id'] ?? null,
                 'modifiedby'   => $authUserName,
@@ -155,45 +186,23 @@ class TestingMasterDetailController extends BaseController
     }
 
     /**
-     * @ClassName 
+     * @ClassName
      * @Keterangan EXPORT DATA MASTER
      */
     public function export()
     {
-        $params = $this->request->getGet();
-        // Hapus pagination untuk export semua
-        unset($params['page'], $params['rows']);
-        $params['rows'] = 999999;
+        $filters = $this->request->getGet();
+        $userId  = $this->authUserId() ?? null;
 
-        $data = $this->service->getAllTestingMasterDetail($params);
+        // Push ke background queue — tidak block request
+        service('queue')->push('default', 'export_penjualan_master', [
+            'userId'  => $userId,
+            'filters' => $filters,
+        ]);
 
-        $excelData = [];
-        $offset    = $this->request->getGet('offset') ?? 0;
-
-        foreach ($data['data'] as $index => $item) {
-            $excelData[] = [
-                $offset + $index + 1,
-                $item->no_bukti      ?? '',
-                $item->tgl_bukti     ?? '',
-                $item->nama_pelanggan ?? '',
-                $item->modifiedby    ?? '',
-                $item->created_at    ?? '',
-                $item->updated_at    ?? '',
-            ];
-        }
-
-        $headers = [
-            'No',
-            'No. Bukti',
-            'Tanggal',
-            'Pelanggan',
-            'Modified By',
-            'Created At',
-            'Updated At',
-        ];
-
-        $excelService = new ExcelMaker();
-        return $excelService->generate('Laporan_Penjualan_' . date('Ymd_His'), $headers, $excelData);
+        return $this->respond([
+            'message' => 'Export data penjualan sedang diproses. Notifikasi akan muncul saat file siap diunduh.',
+        ]);
     }
 
     /**
@@ -351,40 +360,28 @@ class TestingMasterDetailController extends BaseController
     }
 
     /**
-     * @ClassName 
+     * @ClassName
      * @Keterangan EXPORT DATA DETAIL
      */
     public function exportDetail($penjualanId = null)
     {
-        $params = $this->request->getGet();
-        $params['rows'] = 999999;
+        $filters = $this->request->getGet();
+        $userId  = $this->authUserId() ?? null;
 
-        $data = $this->service->getAllDetail($penjualanId, $params);
+        // Ambil no_bukti untuk label nama file
+        $master  = $this->service->getTestingMasterDetailById($penjualanId);
+        $noBukti = $master->no_bukti ?? $penjualanId;
 
-        $excelData = [];
-        foreach ($data['data'] as $index => $item) {
-            $excelData[] = [
-                $index + 1,
-                $item->nama_barang ?? '',
-                $item->qty         ?? 0,
-                number_format($item->harga    ?? 0, 2, ',', '.'),
-                number_format($item->subtotal ?? 0, 2, ',', '.'),
-                $item->modifiedby  ?? '',
-                $item->created_at  ?? '',
-            ];
-        }
+        // Push ke background queue
+        service('queue')->push('default', 'export_penjualan_detail', [
+            'userId'      => $userId,
+            'penjualanId' => $penjualanId,
+            'noBukti'     => $noBukti,
+            'filters'     => $filters,
+        ]);
 
-        $headers = [
-            'No',
-            'Nama Barang',
-            'Qty',
-            'Harga Satuan',
-            'Subtotal',
-            'Modified By',
-            'Created At',
-        ];
-
-        $excelService = new ExcelMaker();
-        return $excelService->generate('Laporan_Detail_Penjualan_' . date('Ymd_His'), $headers, $excelData);
+        return $this->respond([
+            'message' => "Export detail penjualan ({$noBukti}) sedang diproses. Notifikasi akan muncul saat file siap diunduh.",
+        ]);
     }
 }

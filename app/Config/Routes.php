@@ -88,6 +88,7 @@ $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($route
     // !! PENTING: Route spesifik harus sebelum segment !!
     $routes->get('testingmasterdetail/fieldlength', [TestingMasterDetailController::class, 'fieldLength']);
     $routes->get('testingmasterdetail/export', [TestingMasterDetailController::class, 'export']);
+    $routes->get('testingmasterdetail/nextnumber', [TestingMasterDetailController::class, 'nextnumber']);
     $routes->get('testingmasterdetail', [TestingMasterDetailController::class, 'index']);
     $routes->post('testingmasterdetail', [TestingMasterDetailController::class, 'create']);
 
