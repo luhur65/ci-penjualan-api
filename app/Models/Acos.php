@@ -70,7 +70,7 @@ class Acos extends CustomModel
     protected $beforeDelete   = [];
     protected $afterDelete    = [];
 
-    public function get()
+    public function getAll()
     {
         // Base query
         $query = $this->builder();

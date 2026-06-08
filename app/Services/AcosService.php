@@ -24,7 +24,7 @@ class AcosService
    */
   public function getAllAcos($requestData)
   {
-    $acos = $this->acosModel->setRequestParameters($requestData)->get();
+    $acos = $this->acosModel->setRequestParameters($requestData)->getAll();
 
     return [
       'data' => $acos['data'],
