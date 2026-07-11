@@ -4,21 +4,31 @@ namespace App\Controllers\Api;
 
 use App\Controllers\BaseController;
 use CodeIgniter\API\ResponseTrait;
-use App\Models\Pelanggan;
+use App\Models\Alatbayar;
 
-class PelangganController extends BaseController
+class AlatbayarController extends BaseController
 {
     use ResponseTrait;
 
+    protected $model;
+
+    public function __construct()
+    {
+        // Model ini sudah otomatis terhubung ke SQL Server via properti $DBGroup
+        $this->model = new Alatbayar();
+    }
+
+
     /**
-     * GET /api/pelanggan - Daftar semua pelanggan untuk dropdown/lookup
+     * @ClassName 
+     * @Keterangan TAMPILKAN DATA
      */
     public function index()
     {
         $params = $this->request->getGet();
-        $model = new Pelanggan();
-
-        $data = $model->setRequestParameters($params)->getAll();
+        $this->model->setRequestParameters($params);
+        
+        $data = $this->model->getAll();
 
         return $this->respond([
             'data' => $data['data'],

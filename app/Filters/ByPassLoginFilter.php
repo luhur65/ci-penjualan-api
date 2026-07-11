@@ -41,19 +41,22 @@ class ByPassLoginFilter implements FilterInterface
             
             // 3. Buat User Palsu (Mocking)
             $mockUserData = [
+                'id'       => 9999,
                 'id_user'  => 9999,
                 'username' => 'bot_tester',
+                'name'     => 'Bot Tester',
+                'fullname' => 'Bot Tester',
                 // 'role'     => 'admin', // Role sakti
                 'email'    => 'bot@testing.local'
             ];
 
             // 4. Inject ke Global Request agar bisa dibaca Controller
-            // Menggunakan setGlobal sesuai kodingan Anda sebelumnya
-            $request->setGlobal('jwtUser', $mockUserData);
+            // Menggunakan setGlobal server agar kompatibel dengan JwtFilter & AclFilter
+            $request->setGlobal('server', array_merge($request->getServer(), [
+                'jwtUser'     => $mockUserData,
+                'is_bypassed' => true
+            ]));
             
-            // 5. Beri tanda flags bahwa request ini sudah di-bypass
-            $request->setGlobal('is_bypassed', true);
-
             return $request;
         }
     }

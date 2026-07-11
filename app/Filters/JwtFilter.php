@@ -35,6 +35,11 @@ class JwtFilter implements FilterInterface
         // Pastikan $request diperlakukan sebagai IncomingRequest agar method getUri() terbaca
         $scheme = $request->getUri()->getScheme(); 
 
+        // Cek jika bypass sudah aktif dari ByPassLoginFilter
+        // if ($request->getServer('is_bypassed')) {
+        //     return;
+        // }
+
         // 2. Ambil Authority (Domain + Port)
         // Kita gunakan getAuthority() dari URI juga biar konsisten, 
         // atau tetap pakai getServer('HTTP_HOST') juga boleh.

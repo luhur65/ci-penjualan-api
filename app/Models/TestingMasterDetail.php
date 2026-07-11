@@ -20,13 +20,13 @@ class TestingMasterDetail extends CustomModel
     ];
 
     protected $fieldMap = [
-        'no_bukti'       => 'tbl_penjualan.no_bukti',
-        'tgl_bukti'      => 'tbl_penjualan.tgl_bukti',
-        'pelanggan_id'   => 'tbl_penjualan.pelanggan_id',
-        'nama_pelanggan' => 'tbl_pelanggan.nama_pelanggan',
-        'modifiedby'     => 'tbl_penjualan.modifiedby',
-        'created_at'     => 'tbl_penjualan.created_at',
-        'updated_at'     => 'tbl_penjualan.updated_at',
+        'no_bukti'       => 'no_bukti',
+        'tgl_bukti'      => 'tgl_bukti',
+        'pelanggan_id'   => 'pelanggan_id',
+        'nama_pelanggan' => 'nama_pelanggan',
+        'modifiedby'     => 'modifiedby',
+        'created_at'     => 'created_at',
+        'updated_at'     => 'updated_at',
     ];
 
     protected $searchableFields = [
@@ -75,38 +75,39 @@ class TestingMasterDetail extends CustomModel
 
     public function getAll()
     {
-        $query = $this->builder();
-        $query->select([
-            'tbl_penjualan.uuid as id',
-            'tbl_penjualan.no_bukti',
-            'tbl_penjualan.tgl_bukti',
-            'tbl_penjualan.pelanggan_id',
-            'tbl_pelanggan.nama_pelanggan',
-            'tbl_penjualan.modifiedby',
-            'tbl_penjualan.created_at',
-            'tbl_penjualan.updated_at',
-        ]);
-        $query->join('tbl_pelanggan', 'tbl_pelanggan.id = tbl_penjualan.pelanggan_id', 'left');
+        $query = $this->db->table('v_penjualan');
 
         return $this->datatable($query);
     }
 
     public function findOne($id = null)
     {
-        return $this->db->table('tbl_penjualan')
-            ->select([
-                'tbl_penjualan.uuid as id',
-                'tbl_penjualan.no_bukti',
-                'tbl_penjualan.tgl_bukti',
-                'tbl_penjualan.pelanggan_id',
-                'tbl_pelanggan.nama_pelanggan',
-                'tbl_penjualan.modifiedby',
-                'tbl_penjualan.created_at',
-                'tbl_penjualan.updated_at',
-            ])
-            ->join('tbl_pelanggan', 'tbl_pelanggan.id = tbl_penjualan.pelanggan_id', 'left')
-            ->where('tbl_penjualan.uuid', $id)
+        return $this->db->table('v_penjualan')
+            ->where('id', $id)
             ->get()->getRowObject();
+    }
+
+    /**
+     * Override sort untuk CustomModel karena memakai View
+     */
+    public function sort(&$query)
+    {
+        $field = $this->params['sidx'] ?? 'id';
+        $dir   = $this->params['sord'] ?? $this->sortDirection;
+
+        if (in_array($field, $this->searchableFields) || $field === 'id' || $field === 'uuid') {
+            $dbField = $this->mapField($field);
+            if ($dbField === 'uuid') $dbField = 'id';
+            $query->orderBy($dbField, $dir);
+        } else {
+            $query->orderBy('id', $this->sortDirection);
+        }
+
+        if ($field !== 'id' && $field !== 'uuid') {
+            $query->orderBy('id', $this->sortDirection);
+        }
+
+        return $query;
     }
 
     /**
@@ -118,11 +119,11 @@ class TestingMasterDetail extends CustomModel
 
         $page  = (int) ($this->params['page']      ?? 1);
         $limit = (int) ($this->params['limit']     ?? 10);
-        $sidx  = $this->params['sortIndex'] ?? $this->primaryKey;
+        $sidx  = $this->params['sortIndex'] ?? 'id';
         $sord  = strtoupper($this->params['sortOrder'] ?? $this->sortDirection);
 
         if (!in_array($sidx, $this->searchableFields)) {
-            $sidx = 'tbl_penjualan.' . $this->primaryKey;
+            $sidx = 'id';
         } else {
             $sidx = $this->mapField($sidx);
         }
@@ -131,57 +132,175 @@ class TestingMasterDetail extends CustomModel
             $sord = $this->sortDirection;
         }
 
-        $builder = $this->db->table('tbl_penjualan');
-        $builder->select('tbl_penjualan.uuid as id');
-        $builder->join('tbl_pelanggan', 'tbl_pelanggan.id = tbl_penjualan.pelanggan_id', 'left');
+        // 1. Ambil nilai sidx dari record yang dituju
+        $targetBuilder = $this->db->table('v_penjualan');
+        $targetBuilder->select("id, {$sidx} as sort_val");
+        $targetBuilder->where('id', $id);
+        $targetRow = $targetBuilder->get()->getRow();
 
-        // Apply filters via raw search
-        $this->applySearchFilter($builder);
+        if (!$targetRow) {
+            return ['id' => $id, 'position' => 0, 'page' => $page, 'offset' => max(0, $page - 1)];
+        }
 
-        $builder->orderBy($sidx, $sord);
-        $builder->orderBy('tbl_penjualan.uuid', 'ASC');
+        $targetVal = $targetRow->sort_val;
 
-        $records = $builder->get()->getResultArray();
-        $ids     = array_column($records, 'id');
+        // 2. Hitung posisi dengan Mathematical Count (Kecepatan O(1) s/d O(N) tanpa Filesort)
+        $countBuilder = $this->db->table('v_penjualan');
+        $this->applySearchFilter($countBuilder);
+
+        $countBuilder->groupStart();
+        if ($sord === 'ASC') {
+            if ($targetVal === null) {
+                $countBuilder->where("{$sidx} IS NULL");
+                $countBuilder->where("id <=", $id);
+            } else {
+                $countBuilder->groupStart();
+                    $countBuilder->where("{$sidx} <", $targetVal);
+                    $countBuilder->orWhere("{$sidx} IS NULL");
+                $countBuilder->groupEnd();
+                $countBuilder->orGroupStart();
+                    $countBuilder->where("{$sidx}", $targetVal);
+                    $countBuilder->where("id <=", $id);
+                $countBuilder->groupEnd();
+            }
+        } else {
+            // DESC (NULLs ada di paling bawah di MariaDB)
+            if ($targetVal === null) {
+                $countBuilder->where("{$sidx} IS NOT NULL");
+                $countBuilder->orGroupStart();
+                    $countBuilder->where("{$sidx} IS NULL");
+                    $countBuilder->where("id <=", $id);
+                $countBuilder->groupEnd();
+            } else {
+                $countBuilder->where("{$sidx} >", $targetVal);
+                $countBuilder->orGroupStart();
+                    $countBuilder->where("{$sidx}", $targetVal);
+                    $countBuilder->where("id <=", $id);
+                $countBuilder->groupEnd();
+            }
+        }
+        $countBuilder->groupEnd();
+
+        $rowNumber = (int) $countBuilder->countAllResults();
+        if ($rowNumber === 0) {
+            $rowNumber = 1;
+        }
 
         if ($isDeleting) {
-            $currentIndex = array_search((string) $id, array_map('strval', $ids));
-            if ($currentIndex === false) {
-                return ['id' => null, 'position' => 1, 'page' => 1, 'offset' => 0];
-            }
-
-            $totalRows = count($ids);
-            if ($currentIndex < $totalRows - 1) {
-                $neighborIndex = $currentIndex;
-                $neighborId    = $ids[$currentIndex + 1];
-            } elseif ($currentIndex > 0) {
-                $neighborIndex = $currentIndex - 1;
-                $neighborId    = $ids[$currentIndex - 1];
+            // 3. Cari Neighbor ID menggunakan metode limit 1
+            $nextId = $this->getNeighborId($targetVal, $id, $sidx, $sord, 'next');
+            
+            if ($nextId) {
+                $neighborId = $nextId;
+                $finalPos = $rowNumber;
             } else {
-                return ['id' => null, 'position' => 1, 'page' => 1, 'offset' => 0];
+                $prevId = $this->getNeighborId($targetVal, $id, $sidx, $sord, 'prev');
+                if ($prevId) {
+                    $neighborId = $prevId;
+                    $finalPos = max(1, $rowNumber - 1);
+                } else {
+                    return ['id' => null, 'position' => 1, 'page' => 1, 'offset' => 0];
+                }
             }
 
-            $finalPos = $neighborIndex + 1;
             return [
                 'id'       => $neighborId,
                 'position' => $finalPos,
                 'page'     => ceil($finalPos / $limit),
-                'offset'   => max(0, $finalPos - 1),
+                'offset'   => max(0, $finalPos - 1)
             ];
         }
 
-        $rowIndex = array_search((string) $id, array_map('strval', $ids));
-        if ($rowIndex === false) {
-            return ['id' => $id, 'position' => 0, 'page' => $page, 'offset' => max(0, $page - 1)];
-        }
-
-        $rowNumber = $rowIndex + 1;
         return [
             'id'       => $id,
             'position' => $rowNumber,
             'page'     => ceil($rowNumber / $limit),
-            'offset'   => max(0, $rowNumber - 1),
+            'offset'   => max(0, $rowNumber - 1)
         ];
+    }
+
+    /**
+     * Helper khusus mencari neighbor ID dengan efisien.
+     */
+    protected function getNeighborId($targetVal, $targetId, $sidx, $sord, $direction = 'next')
+    {
+        $builder = $this->db->table('v_penjualan');
+        $this->applySearchFilter($builder);
+        $builder->select('id');
+
+        $builder->groupStart();
+        if ($sord === 'ASC') {
+            if ($direction === 'next') {
+                if ($targetVal === null) {
+                    $builder->groupStart();
+                        $builder->where("{$sidx} IS NULL");
+                        $builder->where("id >", $targetId);
+                    $builder->groupEnd();
+                    $builder->orWhere("{$sidx} IS NOT NULL");
+                } else {
+                    $builder->where("{$sidx} >", $targetVal);
+                    $builder->orGroupStart();
+                        $builder->where("{$sidx}", $targetVal);
+                        $builder->where("id >", $targetId);
+                    $builder->groupEnd();
+                }
+                $builder->orderBy($sidx, 'ASC');
+                $builder->orderBy('id', 'ASC');
+            } else { // prev
+                if ($targetVal === null) {
+                    $builder->where("{$sidx} IS NULL");
+                    $builder->where("id <", $targetId);
+                } else {
+                    $builder->groupStart();
+                        $builder->where("{$sidx} <", $targetVal);
+                        $builder->orWhere("{$sidx} IS NULL");
+                    $builder->groupEnd();
+                    $builder->orGroupStart();
+                        $builder->where("{$sidx}", $targetVal);
+                        $builder->where("id <", $targetId);
+                    $builder->groupEnd();
+                }
+                $builder->orderBy($sidx, 'DESC');
+                $builder->orderBy('id', 'DESC');
+            }
+        } else { // DESC
+            if ($direction === 'next') {
+                if ($targetVal === null) {
+                    $builder->where("{$sidx} IS NULL");
+                    $builder->where("id >", $targetId);
+                } else {
+                    $builder->where("{$sidx} <", $targetVal);
+                    $builder->orWhere("{$sidx} IS NULL");
+                    $builder->orGroupStart();
+                        $builder->where("{$sidx}", $targetVal);
+                        $builder->where("id >", $targetId);
+                    $builder->groupEnd();
+                }
+                $builder->orderBy($sidx, 'DESC');
+                $builder->orderBy('id', 'ASC');
+            } else { // prev
+                if ($targetVal === null) {
+                    $builder->where("{$sidx} IS NOT NULL");
+                    $builder->orGroupStart();
+                        $builder->where("{$sidx} IS NULL");
+                        $builder->where("id <", $targetId);
+                    $builder->groupEnd();
+                } else {
+                    $builder->where("{$sidx} >", $targetVal);
+                    $builder->orGroupStart();
+                        $builder->where("{$sidx}", $targetVal);
+                        $builder->where("id <", $targetId);
+                    $builder->groupEnd();
+                }
+                $builder->orderBy($sidx, 'ASC');
+                $builder->orderBy('id', 'DESC');
+            }
+        }
+        $builder->groupEnd();
+        
+        $builder->limit(1);
+        $row = $builder->get()->getRow();
+        return $row ? $row->id : null;
     }
 
     /**
@@ -220,4 +339,6 @@ class TestingMasterDetail extends CustomModel
             $builder->where('(' . implode(' OR ', $conds) . ')', null, false);
         }
     }
+
+
 }

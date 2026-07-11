@@ -10,14 +10,19 @@ class AclFilter implements FilterInterface
 {
     private $exceptions = [
         'class' => [], // Silahkan lengkapi listnya
-        'method' => ['refresh', 'cekvalidasi', 'index', 'show', 'getmenuparent', 'getallclass']   // Silahkan lengkapi listnya
+        'method' => ['refresh', 'cekvalidasi', 'index', 'show', 'getmenuparent', 'getallclass', 'nextnumber']   // Silahkan lengkapi listnya
     ];
 
     public function before(RequestInterface $request, $arguments = null)
     {
         $router = service('router');
         $userData = $request->getServer('jwtUser');
-        $userId = $userData['id'] ?? null;
+        $userId = $userData['id'] ?? ($userData['id_user'] ?? null);
+
+        // Cek jika bypass sudah aktif
+        // if ($request->getServer('is_bypassed')) {
+        //     return;
+        // }
 
         // Ambil nama class dan method dari router CI4
         // Format di CI4 biasanya: \App\Controllers\NamaController
