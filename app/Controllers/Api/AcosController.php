@@ -27,7 +27,7 @@ class AcosController extends BaseController
      */
     public function index()
     {
-        $requestData = $this->request->getGetPost();
+        $requestData = $this->request->getGet();
         return $this->respond($this->acosService->getAllAcos($requestData));
     }
 }

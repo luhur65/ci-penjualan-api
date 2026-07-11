@@ -12,6 +12,7 @@ use App\Controllers\Api\PelangganController;
 use App\Controllers\Api\ErrorController;
 use App\Controllers\Api\GridPreferencesController;
 use App\Controllers\Api\TestingMasterDetailController;
+use App\Controllers\Api\AlatbayarController;
 
 /**
  * @var RouteCollection $routes
@@ -105,4 +106,7 @@ $routes->group("api", ['filter' => ['jwtFilter', 'aclFilter']], function ($route
     $routes->patch('testingmasterdetail/(:segment)', [TestingMasterDetailController::class, 'update/$1']);
     $routes->delete('testingmasterdetail/(:segment)', [TestingMasterDetailController::class, 'delete/$1']);
 
+    // SQL Server test route
+    $routes->get('alatbayar', [AlatbayarController::class, 'index']);
+    
 });
