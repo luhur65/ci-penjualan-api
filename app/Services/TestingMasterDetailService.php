@@ -269,7 +269,21 @@ class TestingMasterDetailService
      */
     protected function generateUuidV7(): string
     {
-        $result = $this->db->query("SELECT UUID_v7() as uuid")->getRowObject();
+        try {
+            // Coba fungsi custom UUID_v7() jika tersedia di server
+            $result = $this->db->query("SELECT UUID_v7() as uuid");
+            if ($result) {
+                $row = $result->getRowObject();
+                if ($row && isset($row->uuid)) {
+                    return $row->uuid;
+                }
+            }
+        } catch (\Throwable $th) {
+            // Abaikan error jika UUID_v7() tidak dikenali
+        }
+
+        // Fallback: Gunakan standar UUID v1 bawaan MySQL/MariaDB
+        $result = $this->db->query("SELECT UUID() as uuid")->getRowObject();
         return $result->uuid;
     }
 }

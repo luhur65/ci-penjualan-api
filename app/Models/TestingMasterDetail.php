@@ -82,9 +82,11 @@ class TestingMasterDetail extends CustomModel
 
     public function findOne($id = null)
     {
-        return $this->db->table('v_penjualan')
+        $query = $this->db->table('v_penjualan')
             ->where('id', $id)
-            ->get()->getRowObject();
+            ->get();
+            
+        return $query ? $query->getRowObject() : null;
     }
 
     /**
