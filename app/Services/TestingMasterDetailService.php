@@ -97,27 +97,55 @@ class TestingMasterDetailService
                 ->where('uuid', $id)
                 ->update($data);
 
-            // Jika ada items dari form inline → replace semua detail
-            if (!empty($items)) {
-                // Hapus semua detail lama
-                $this->db->table('tbl_penjualan_detail')
+            // Jika ada items dari form inline → lakukan sinkronisasi (Selective Update)
+            if (isset($items)) {
+                // 1. Ambil ID detail yang sudah ada di database
+                $existingDetails = $this->db->table('tbl_penjualan_detail')
+                    ->select('id')
                     ->where('penjualan_id', $id)
-                    ->delete();
+                    ->get()->getResultArray();
+                
+                $existingIds = array_column($existingDetails, 'id');
+                $payloadIds = [];
 
-                // Insert ulang dari form
                 foreach ($items as $item) {
                     $namaBarang = trim($item['nama_barang'] ?? '');
                     if ($namaBarang === '') continue;
 
-                    $detailUuid = $this->generateUuidV7();
-                    $this->db->table('tbl_penjualan_detail')->insert([
-                        'id'           => $detailUuid,
-                        'penjualan_id' => $id,
-                        'nama_barang'  => $namaBarang,
-                        'qty'          => (int) ($item['qty']   ?? 1),
-                        'harga'        => (float) ($item['harga'] ?? 0),
-                        'modifiedby'   => $data['modifiedby'],
-                    ]);
+                    $itemId = $item['id'] ?? '';
+
+                    if (!empty($itemId) && in_array($itemId, $existingIds)) {
+                        // UPDATE data yang sudah ada
+                        $this->db->table('tbl_penjualan_detail')
+                            ->where('id', $itemId)
+                            ->update([
+                                'nama_barang' => $namaBarang,
+                                'qty'         => (int) ($item['qty']   ?? 1),
+                                'harga'       => (float) ($item['harga'] ?? 0),
+                                'modifiedby'  => $data['modifiedby'],
+                            ]);
+                        $payloadIds[] = $itemId;
+                    } else {
+                        // INSERT data baru
+                        $detailUuid = $this->generateUuidV7();
+                        $this->db->table('tbl_penjualan_detail')->insert([
+                            'id'           => $detailUuid,
+                            'penjualan_id' => $id,
+                            'nama_barang'  => $namaBarang,
+                            'qty'          => (int) ($item['qty']   ?? 1),
+                            'harga'        => (float) ($item['harga'] ?? 0),
+                            'modifiedby'   => $data['modifiedby'],
+                        ]);
+                        $payloadIds[] = $detailUuid;
+                    }
+                }
+
+                // DELETE data yang ada di DB tapi tidak dikirim lagi dari form (dihapus user)
+                $idsToDelete = array_diff($existingIds, $payloadIds);
+                if (!empty($idsToDelete)) {
+                    $this->db->table('tbl_penjualan_detail')
+                        ->whereIn('id', $idsToDelete)
+                        ->delete();
                 }
             }
 
