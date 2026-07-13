@@ -98,7 +98,7 @@ class TestingMasterDetailItem extends CustomModel
 
     public function findOne($id = null)
     {
-        return $this->db->table('tbl_penjualan_detail')
+        $query = $this->db->table('tbl_penjualan_detail')
             ->select([
                 'id',
                 'penjualan_id',
@@ -111,7 +111,9 @@ class TestingMasterDetailItem extends CustomModel
                 'updated_at',
             ])
             ->where('id', $id)
-            ->get()->getRowObject();
+            ->get();
+            
+        return $query ? $query->getRowObject() : null;
     }
 
     /**
@@ -119,10 +121,12 @@ class TestingMasterDetailItem extends CustomModel
      */
     public function getTotalByPenjualan(string $penjualanId): float
     {
-        $result = $this->db->table('tbl_penjualan_detail')
+        $query = $this->db->table('tbl_penjualan_detail')
             ->select('SUM(qty * harga) as total')
             ->where('penjualan_id', $penjualanId)
-            ->get()->getRowObject();
+            ->get();
+            
+        $result = $query ? $query->getRowObject() : null;
 
         return (float) ($result->total ?? 0);
     }
