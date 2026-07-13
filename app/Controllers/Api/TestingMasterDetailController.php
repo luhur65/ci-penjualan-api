@@ -231,7 +231,7 @@ class TestingMasterDetailController extends BaseController
     public function indexDetail($penjualanId = null)
     {
         // Return empty result jika penjualan_id tidak valid (misal placeholder)
-        if (!$penjualanId || !preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $penjualanId)) {
+        if (!$penjualanId || !preg_match('/^[0-9a-f\-]{32,36}$/i', $penjualanId)) {
             return $this->respond([
                 'data'       => [],
                 'attributes' => ['totalRows' => 0, 'totalPages' => 0, 'total' => 0],
